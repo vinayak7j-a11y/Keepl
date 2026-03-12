@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Keepl Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<h2>Shop QR Code</h2>
+
+<img id="shopQR" width="200">
+
+<p>Ask customers to scan this QR to earn points.</p>
+<div class="container">
+
+<h1>Keepl Dashboard</h1>
+<div class="stats">
+
+<div class="stat-card">
+<h3>Total Customers</h3>
+<p id="customers">0</p>
+</div>
+
+<div class="stat-card">
+<h3>Total Transactions</h3>
+<p id="transactions">0</p>
+</div>
+
+<div class="stat-card">
+<h3>Total Points Issued</h3>
+<p id="pointsIssued">0</p>
+</div>
+
+</div>
+<div class="card">
+<h2>Waiting Customers</h2>
+
+<div id="queue"></div>
+<h2>Add Transaction</h2> 
+<div class="stat-card">
+<h3>Revenue Generated</h3>
+<p id="revenue">0</p>
+</div>
+
+<div class="stat-card">
+<h3>Repeat Customers</h3>
+<p id="repeat">0</p>
+</div>
+
+
+<input id="tphone" placeholder="Customer Phone">
+<input id="amount" placeholder="Bill Amount">
+
+<button onclick="addTransaction()">Add Points</button>
+
+</div>
+
+<div class="card">
+
+<h2>Redeem Points</h2>
+
+<input id="rphone" placeholder="Customer Phone">
+<input id="points" placeholder="Points to Redeem">
+
+<button onclick="redeem()">Redeem Points</button>
+
+</div>
+
+<div class="card">
+
+<h2>Result</h2>
+
+<p id="result">Waiting for action...</p>
+
+</div>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+
+</html>
