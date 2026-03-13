@@ -5,23 +5,40 @@ const { v4: uuidv4 } = require("uuid");
 const QRCode = require("qrcode");
 
 exports.registerShop = async (req, res) => {
+
   try {
+
     const { name, ownerName, phone, password } = req.body;
 
+    // Check if shop already exists
     const existingShop = await Shop.findOne({ phone });
 
     if (existingShop) {
-      return res.status(400).json({ message: "Shop already exists" });
+      return res.status(400).json({
+        message: "Shop already exists"
+      });
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate unique shop ID
     const shopId = uuidv4();
 
+    // Create QR URL
     const qrData = `${process.env.BASE_URL}/s/${shopId}`;
 
-    const qrCode = await QRCode.toDataURL(qrData);
+    // Generate QR code
+    const qrCode = await QRCode.toDataURL(qrData, {
+      width: 300,
+      margin: 2,
+      color: {
+        dark: "#000000",
+        light: "#ffffff"
+      }
+    });
 
+    // Create shop
     const shop = new Shop({
       name,
       ownerName,
@@ -40,24 +57,37 @@ exports.registerShop = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+
+    console.error(error);
+
+    res.status(500).json({
+      error: "Server error"
+    });
+
   }
+
 };
 
 exports.loginShop = async (req, res) => {
+
   try {
+
     const { phone, password } = req.body;
 
     const shop = await Shop.findOne({ phone });
 
     if (!shop) {
-      return res.status(404).json({ message: "Shop not found" });
+      return res.status(404).json({
+        message: "Shop not found"
+      });
     }
 
     const isMatch = await bcrypt.compare(password, shop.password);
 
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({
+        message: "Invalid credentials"
+      });
     }
 
     const token = jwt.sign(
@@ -74,6 +104,13 @@ exports.loginShop = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+
+    console.error(error);
+
+    res.status(500).json({
+      error: "Server error"
+    });
+
   }
+
 };

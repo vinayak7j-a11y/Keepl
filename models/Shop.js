@@ -1,35 +1,53 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const shopSchema = new mongoose.Schema(
 {
   name: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
+
   ownerName: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
+
   phone: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    trim: true
   },
+
   password: {
     type: String,
     required: true
   },
+
   shopId: {
     type: String,
-    unique: true
+    unique: true,
+    index: true
   },
+
+  logo: {
+    type: String,
+    default: ""
+  },
+
   qrCode: {
-    type: String
+    type: String,
+    default: ""
   },
+
   rewardRate: {
     type: Number,
-    default: 10 // ₹10 spent → 1 point
+    default: 10, // ₹100 spent → 10 points
+    min: 0
   }
+
 },
 {
   timestamps: true

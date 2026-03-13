@@ -1,35 +1,61 @@
 require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require("path");
 
 const shopRoutes = require("./routes/shopRoutes");
 const scanRoutes = require("./routes/scanRoutes");
 const customerRoutes = require("./routes/customerRoutes");
-const transactionRoutes = require("./routes/transactionRoutes"); 
-const redeemRoutes = require("./routes/redeemRoutes"); 
-const dashboardRoutes = require("./routes/dashboardRoutes"); 
-const queueRoutes=require("./routes/queueRoutes")
+const transactionRoutes = require("./routes/transactionRoutes");
+const redeemRoutes = require("./routes/redeemRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
+const queueRoutes = require("./routes/queueRoutes");
+const posterRoutes = require("./routes/posterRoutes");
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// static files
 app.use(express.static("public"));
-app.use("/api/shops", shopRoutes); 
-app.use("/api", transactionRoutes); 
+
+// view engine
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+
+/* =========================
+   API ROUTES
+========================= */
+
+app.use("/api/shops", shopRoutes);
+app.use("/api", transactionRoutes);
 app.use("/api", redeemRoutes);
+app.use("/api", queueRoutes);
+
+/* =========================
+   PAGE ROUTES
+========================= */
+
 app.use("/", scanRoutes);
 app.use("/", customerRoutes);
-app.use("/api", dashboardRoutes); 
-app.use("/api",queueRoutes)
+app.use("/", dashboardRoutes);
+app.use("/", posterRoutes);
+
 const PORT = process.env.PORT || 5050;
 
 console.log("Attempting Mongo Connection...");
 
-// CONNECT TO MONGODB FIRST
+/* =========================
+   DATABASE CONNECTION
+========================= */
+
 mongoose.connect(process.env.MONGO_URI)
 .then(() => {
+
     console.log("MongoDB Connected ✅");
 
     app.listen(PORT, () => {

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Keepl Dashboard</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+
+body{
+font-family:Arial;
+background:#f4f6f8;
+padding:30px;
+margin:0;
+}
+
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:25px;
+}
+
+h1{
+margin:0;
+}
+
+button{
+background:black;
+color:white;
+border:none;
+padding:10px 16px;
+cursor:pointer;
+border-radius:6px;
+font-size:14px;
+}
+
+button:hover{
+opacity:0.9;
+}
+
+.stats{
+display:flex;
+gap:20px;
+margin-bottom:25px;
+flex-wrap:wrap;
+}
+
+.statBox{
+background:white;
+padding:20px;
+border-radius:10px;
+flex:1;
+min-width:200px;
+box-shadow:0 2px 6px rgba(0,0,0,0.05);
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:10px;
+margin-bottom:25px;
+box-shadow:0 2px 6px rgba(0,0,0,0.05);
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
+padding:12px;
+border-bottom:1px solid #eee;
+text-align:left;
+}
+
+th{
+background:#fafafa;
+}
+
+.qrSection{
+text-align:center;
+}
+
+.qrSection img{
+margin-top:10px;
+border:1px solid #eee;
+padding:10px;
+background:white;
+}
+
+.empty{
+text-align:center;
+padding:20px;
+color:#777;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+
+<h1><%= shop.name %> Dashboard</h1>
+
+<a href="/poster/<%= shop.shopId %>">
+<button>Download QR Poster</button>
+</a>
+
+</div>
+
+
+<div class="stats">
+
+<div class="statBox">
+<h3>Customers Today</h3>
+<p><%= customersToday %></p>
+</div>
+
+<div class="statBox">
+<h3>Points Given Today</h3>
+<p><%= pointsToday %></p>
+</div>
+
+<div class="statBox">
+<h3>Total Waiting</h3>
+<p><%= customers.length %></p>
+</div>
+
+</div>
+
+
+<div class="card">
+
+<h3>Customers Waiting</h3>
+
+<% if(customers.length === 0){ %>
+
+<div class="empty">
+No customers in queue
+</div>
+
+<% } else { %>
+
+<table>
+
+<tr>
+<th>Name</th>
+<th>Phone</th>
+<th>Action</th>
+</tr>
+
+<% customers.forEach(customer => { %>
+
+<tr>
+
+<td><%= customer.name %></td>
+<td><%= customer.phone %></td>
+
+<td>
+<button>Give Points</button>
+</td>
+
+</tr>
+
+<% }) %>
+
+</table>
+
+<% } %>
+
+</div>
+
+
+<div class="card qrSection">
+
+<h3>Your Shop QR</h3>
+
+<img src="<%= shop.qrCode %>" width="200">
+
+<p>Customers scan this QR to earn rewards</p>
+
+</div>
+
+</body>
+
+</html>
