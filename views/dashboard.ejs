@@ -97,6 +97,14 @@ padding:20px;
 color:#777;
 }
 
+input{
+padding:8px;
+border-radius:6px;
+border:1px solid #ddd;
+margin-right:10px;
+width:120px;
+}
+
 </style>
 
 </head>
@@ -162,7 +170,17 @@ No customers in queue
 <td><%= customer.phone %></td>
 
 <td>
-<button>Give Points</button>
+
+<input 
+type="number" 
+id="amount-<%= customer.phone %>" 
+placeholder="Bill Amount"
+>
+
+<button onclick="givePoints('<%= customer.phone %>')">
+Give Points
+</button>
+
 </td>
 
 </tr>
@@ -185,6 +203,59 @@ No customers in queue
 <p>Customers scan this QR to earn rewards</p>
 
 </div>
+
+
+<script>
+
+async function givePoints(phone){
+
+const amountInput = document.getElementById(`amount-${phone}`)
+
+const billAmount = amountInput.value
+
+if(!billAmount){
+
+alert("Enter bill amount")
+
+return
+
+}
+
+const shopId = "<%= shop.shopId %>"
+
+try{
+
+const res = await fetch("/api/add-transaction",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body: JSON.stringify({
+phone,
+shopId,
+billAmount
+})
+
+})
+
+const data = await res.json()
+
+alert(`Points Added: ${data.pointsEarned}`)
+
+location.reload()
+
+}catch(err){
+
+alert("Error adding points")
+
+}
+
+}
+
+</script>
 
 </body>
 
