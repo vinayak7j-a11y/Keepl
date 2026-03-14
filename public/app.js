@@ -1,25 +1,28 @@
+
 async function login(){
 
 const phone = document.getElementById("phone").value
 const password = document.getElementById("password").value
 
 const res = await fetch("/api/shops/login",{
+
 method:"POST",
-headers:{ "Content-Type":"application/json" },
-body: JSON.stringify({phone,password})
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body: JSON.stringify({ phone,password })
+
 })
 
 const data = await res.json()
 
-console.log("LOGIN RESPONSE:", data)
-
 if(data.shopId){
 
-localStorage.setItem("token", data.token)
-localStorage.setItem("shopId", data.shopId)
-localStorage.setItem("qrCode", data.qrCode)
+localStorage.setItem("token",data.token)
 
-window.location.href="/dashboard.html"
+window.location.href = "/dashboard/" + data.shopId
 
 }else{
 
@@ -28,7 +31,6 @@ alert(data.message)
 }
 
 }
-
 
 
 async function addTransaction(){
@@ -100,33 +102,28 @@ document.getElementById("repeat").innerText = data.repeatCustomers
 
 async function loadQueue(){
 
-const shopId=localStorage.getItem("shopId")
+const shopId = window.location.pathname.split("/").pop()
 
-const res=await fetch(`/api/queue/${shopId}`)
+const res = await fetch(`/api/queue/${shopId}`)
 
-const customers=await res.json()
+const customers = await res.json()
 
-const container=document.getElementById("queue")
+const container = document.getElementById("queue")
 
-container.innerHTML=""
+container.innerHTML = ""
 
-customers.forEach(c=>{
+customers.forEach(c => {
 
-container.innerHTML+=`
-<div class="queue-card">
+container.innerHTML += `
+<div class="queue-item">
 
-<div class="customer-info">
-<strong>${c.name}</strong><br>
-📱 ${c.phone}
-</div>
+<span>${c.name} - ${c.phone}</span>
 
-<div class="bill-input">
 <input id="amount-${c._id}" placeholder="Bill Amount">
 
 <button onclick="addFromQueue('${c.phone}','${c._id}', this)">
 Add Bill
 </button>
-</div>
 
 </div>
 `
@@ -134,7 +131,6 @@ Add Bill
 })
 
 }
-
 
 
 async function addFromQueue(phone,id,button){

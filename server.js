@@ -19,7 +19,27 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.get("/dashboard/:shopId", async (req,res)=>{
 
+const shopId = req.params.shopId
+
+const shop = await Shop.findOne({ shopId })
+
+if(!shop){
+
+return res.send("Shop not found")
+
+}
+
+res.render("dashboard",{
+
+shopName: shop.name,
+qrCode: shop.qrCode,
+shopId: shop.shopId
+
+})
+
+})
 // static files
 app.use(express.static("public"));
 
