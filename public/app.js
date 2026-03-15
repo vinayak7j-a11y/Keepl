@@ -1,203 +1,380 @@
+/* =========================
+   GLOBAL API HELPER
+========================= */
 
-async function login(){
+async function apiRequest(url, method = "GET", body = null) {
 
-const phone = document.getElementById("phone").value
-const password = document.getElementById("password").value
+    const token = localStorage.getItem("token");
 
-const res = await fetch("/api/shops/login",{
+    const options = {
+        method,
+        headers: {
+            "Content-Type": "application/json"
+        }
+    };
 
-method:"POST",
+    if (token) {
+        options.headers["Authorization"] = `Bearer ${token}`;
+    }
 
-headers:{
-"Content-Type":"application/json"
-},
+    if (body) {
+        options.body = JSON.stringify(body);
+    }
 
-body: JSON.stringify({ phone,password })
+    try {
 
-})
+        const res = await fetch(url, options);
 
-const data = await res.json()
+        if (!res.ok) {
 
-if(data.shopId){
+            if (res.status === 401) {
+                localStorage.clear();
+                window.location.href = "/";
+            }
 
-localStorage.setItem("token",data.token)
+            const text = await res.text();
+            throw new Error(text || "API request failed");
+        }
 
-window.location.href = "/dashboard/" + data.shopId
+        return await res.json();
 
-}else{
+    } catch (err) {
 
-alert(data.message)
+        console.error("API Error:", err);
+        throw err;
 
-}
-
-}
-
-
-async function addTransaction(){
-
-const phone=document.getElementById("tphone").value
-const billAmount=document.getElementById("amount").value
-
-const shopId=localStorage.getItem("shopId")
-
-const res=await fetch("/api/add-transaction",{
-
-method:"POST",
-
-headers:{ "Content-Type":"application/json" },
-
-body: JSON.stringify({phone,shopId,billAmount})
-
-})
-
-const data=await res.json()
-
-document.getElementById("result").innerText=JSON.stringify(data)
-
+    }
 }
 
 
+/* =========================
+   LOGIN
+========================= */
 
-async function redeem(){
+async function login() {
 
-const phone=document.getElementById("rphone").value
-const points=document.getElementById("points").value
+    const phone = document.getElementById("phone")?.value.trim();
+    const password = document.getElementById("password")?.value.trim();
 
-const shopId=localStorage.getItem("shopId")
+    if (!phone || !password) {
+        alert("Please enter phone and password");
+        return;
+    }
 
-const res=await fetch("/api/redeem",{
+    try {
 
-method:"POST",
+        const data = await apiRequest("/api/shops/login", "POST", {
+            phone,
+            password
+        });
 
-headers:{ "Content-Type":"application/json" },
+        if (data.shopId) {
 
-body: JSON.stringify({phone,shopId,points})
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("shopId", data.shopId);
+            localStorage.setItem("qrCode", data.qrCode || "");
 
-})
+            window.location.href = `/dashboard/${data.shopId}`;
 
-const data=await res.json()
+        } else {
 
-document.getElementById("result").innerText=JSON.stringify(data)
+            alert(data.message || "Login failed");
+
+        }
+
+    } catch (err) {
+
+        alert("Server error");
+
+    }
+}
+
+
+/* =========================
+   ADD TRANSACTION
+========================= */
+
+async function addTransaction() {
+
+    const phone = document.getElementById("tphone")?.value.trim();
+    const billAmount = Number(document.getElementById("amount")?.value);
+
+    const shopId = localStorage.getItem("shopId");
+
+    if (!phone || !billAmount) {
+        alert("Enter phone and bill amount");
+        return;
+    }
+
+    try {
+
+        const data = await apiRequest("/api/add-transaction", "POST", {
+            phone,
+            shopId,
+            billAmount
+        });
+
+        const result = document.getElementById("result");
+
+        if (result) {
+            result.innerText = data.message || "Transaction added";
+        }
+
+    } catch (err) {
+
+        alert("Transaction failed");
+
+    }
+}
+
+
+/* =========================
+   REDEEM POINTS
+========================= */
+
+async function redeem() {
+
+    const phone = document.getElementById("rphone")?.value.trim();
+    const points = Number(document.getElementById("points")?.value);
+
+    const shopId = localStorage.getItem("shopId");
+
+    if (!phone || !points) {
+        alert("Enter phone and points");
+        return;
+    }
+
+    try {
+
+        const data = await apiRequest("/api/redeem", "POST", {
+            phone,
+            shopId,
+            points
+        });
+
+        const result = document.getElementById("result");
+
+        if (result) {
+            result.innerText = data.message || "Redeemed successfully";
+        }
+
+    } catch (err) {
+
+        alert("Redeem failed");
+
+    }
+}
+
+
+/* =========================
+   LOAD DASHBOARD STATS
+========================= */
+
+async function loadStats() {
+
+    const shopId = localStorage.getItem("shopId");
+
+    if (!shopId) return;
+
+    try {
+
+        const data = await apiRequest(`/api/dashboard/${shopId}`);
+
+        const customers = document.getElementById("customers");
+        const transactions = document.getElementById("transactions");
+        const pointsIssued = document.getElementById("pointsIssued");
+        const revenue = document.getElementById("revenue");
+        const repeat = document.getElementById("repeat");
+
+        if (customers) customers.innerText = data.totalCustomers || 0;
+        if (transactions) transactions.innerText = data.totalTransactions || 0;
+        if (pointsIssued) pointsIssued.innerText = data.totalPointsIssued || 0;
+        if (revenue) revenue.innerText = "₹" + (data.revenue || 0);
+        if (repeat) repeat.innerText = data.repeatCustomers || 0;
+
+    } catch (err) {
+
+        console.error("Stats error:", err);
+
+    }
+}
+
+
+/* =========================
+   LOAD CUSTOMER QUEUE
+========================= */
+
+async function loadQueue() {
+
+    const shopId = window.location.pathname.split("/").pop();
+
+    if (!shopId) return;
+
+    const container = document.getElementById("queue");
+
+    if (!container) return;
+
+    try {
+
+        const customers = await apiRequest(`/api/queue/${shopId}`);
+
+        container.innerHTML = "";
+
+        customers.forEach(c => {
+
+            const div = document.createElement("div");
+            div.className = "queue-item";
+
+            div.innerHTML = `
+                <span>${c.name || "Customer"} - ${c.phone}</span>
+                <input id="amount-${c._id}" type="number" placeholder="Bill Amount">
+                <button onclick="addFromQueue('${c.phone}','${c._id}', this)">
+                    Add Bill
+                </button>
+            `;
+
+            container.appendChild(div);
+
+        });
+
+    } catch (err) {
+
+        console.error("Queue load error:", err);
+
+    }
+}
+
+
+/* =========================
+   ADD BILL FROM QUEUE
+========================= */
+
+async function addFromQueue(phone, id, button) {
+
+    const amount = Number(document.getElementById(`amount-${id}`)?.value);
+
+    if (!amount || amount <= 0) {
+        alert("Enter a valid bill amount");
+        return;
+    }
+
+    const shopId = localStorage.getItem("shopId");
+
+    button.disabled = true;
+    button.innerText = "Processing...";
+
+    try {
+
+        const data = await apiRequest("/api/add-transaction", "POST", {
+            phone,
+            shopId,
+            billAmount: amount
+        });
+
+        if (data.message !== "Points added") {
+            alert(data.message);
+        }
+
+        loadQueue();
+
+    } catch (err) {
+
+        alert("Failed to add bill");
+
+    }
+
+    button.disabled = false;
+    button.innerText = "Add Bill";
+}
+
+
+/* =========================
+   LOAD SHOP QR
+========================= */
+
+function loadQR() {
+
+    const qr = localStorage.getItem("qrCode");
+    const img = document.getElementById("shopQR");
+
+    if (qr && img) {
+        img.src = qr;
+    }
 
 }
 
 
-async function loadStats(){
-
-const shopId = localStorage.getItem("shopId")
-
-const res = await fetch(`/api/dashboard/${shopId}`)
-
-const data = await res.json()
-
-document.getElementById("customers").innerText = data.totalCustomers
-document.getElementById("transactions").innerText = data.totalTransactions
-document.getElementById("pointsIssued").innerText = data.totalPointsIssued
-document.getElementById("revenue").innerText = "₹" + data.revenue
-document.getElementById("repeat").innerText = data.repeatCustomers
-
-}
-
-
-
-async function loadQueue(){
-
-const shopId = window.location.pathname.split("/").pop()
-
-const res = await fetch(`/api/queue/${shopId}`)
-
-const customers = await res.json()
-
-const container = document.getElementById("queue")
-
-container.innerHTML = ""
-
-customers.forEach(c => {
-
-container.innerHTML += `
-<div class="queue-item">
-
-<span>${c.name} - ${c.phone}</span>
-
-<input id="amount-${c._id}" placeholder="Bill Amount">
-
-<button onclick="addFromQueue('${c.phone}','${c._id}', this)">
-Add Bill
-</button>
-
-</div>
-`
-
-})
-
-}
-
-
-async function addFromQueue(phone,id,button){
-
-const amount = document.getElementById(`amount-${id}`).value
-
-if(!amount || amount <= 0){
-alert("Enter a valid bill amount")
-return
-}
-
-const shopId=localStorage.getItem("shopId")
-
-button.disabled = true
-button.innerText = "Processing..."
-
-const res = await fetch("/api/add-transaction",{
-
-method:"POST",
-
-headers:{"Content-Type":"application/json"},
-
-body:JSON.stringify({
-
-phone,
-shopId,
-billAmount:amount
-
-})
-
-})
-
-const data = await res.json()
-
-if(data.message !== "Points added"){
-alert(data.message)
-}
-
-button.disabled = false
-button.innerText = "Add Bill"
-
-loadQueue()
-
-}
-
-
-
-function loadQR(){
-
-const qr = localStorage.getItem("qrCode")
-
-if(qr){
-document.getElementById("shopQR").src = qr
-}
-
-}
-
-
+/* =========================
+   PAGE INIT
+========================= */
 
 window.onload = () => {
 
-loadStats()
-loadQueue()
-loadQR()
+    loadStats();
+    loadQueue();
+    loadQR();
+
+};
+
+
+/* =========================
+   SERVICE WORKER
+========================= */
+
+if ("serviceWorker" in navigator) {
+
+navigator.serviceWorker
+.register("/sw.js")
+.then(() => console.log("Service Worker registered"))
+.catch(err => console.log("SW failed:", err));
 
 }
 
 
+/* =========================
+   INSTALL APP PROMPT
+========================= */
 
-setInterval(loadQueue,3000)
+let deferredPrompt;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+
+e.preventDefault();
+deferredPrompt = e;
+
+const installBtn = document.getElementById("installBtn");
+
+if (installBtn) {
+
+installBtn.style.display = "block";
+
+installBtn.onclick = async () => {
+
+deferredPrompt.prompt();
+
+const result = await deferredPrompt.userChoice;
+
+if(result.outcome === "accepted"){
+console.log("App installed");
+}
+
+installBtn.style.display = "none";
+
+};
+
+}
+
+});
+
+
+/* =========================
+   AUTO REFRESH QUEUE
+========================= */
+
+setInterval(() => {
+
+if (document.getElementById("queue")) {
+loadQueue();
+}
+
+}, 3000);

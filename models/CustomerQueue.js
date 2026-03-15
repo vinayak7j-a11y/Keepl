@@ -1,26 +1,67 @@
 const mongoose = require("mongoose");
 
-const queueSchema = new mongoose.Schema({
+const queueSchema = new mongoose.Schema(
+{
+  name: {
+    type: String,
+    trim: true,
+    default: ""
+  },
 
-name:String,
+  phone: {
+    type: String,
+    required: true,
+    trim: true,
+    index: true
+  },
 
-phone:String,
+  shopId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Shop",
+    required: true,
+    index: true
+  },
 
-shopId:{
-type:mongoose.Schema.Types.ObjectId,
-ref:"Shop"
+  status: {
+    type: String,
+    enum: ["waiting", "processing", "completed", "cancelled"],
+    default: "waiting",
+    index: true
+  },
+
+  expiresAt: {
+    type: Date
+  }
+
 },
+{
+  timestamps: true
+});
 
-status:{
-type:String,
-default:"waiting"
-},
+/* =========================
+   INDEXES (FAST QUEUE LOOKUP)
+========================= */
 
-createdAt:{
-type:Date,
-default:Date.now
-}
+queueSchema.index({ shopId: 1, status: 1 });
+queueSchema.index({ createdAt: -1 });
 
-})
+/* =========================
+   METHODS
+========================= */
 
-module.exports=mongoose.model("CustomerQueue",queueSchema)
+// mark as processing
+queueSchema.methods.startProcessing = function () {
+  this.status = "processing";
+};
+
+// mark as completed
+queueSchema.methods.complete = function () {
+  this.status = "completed";
+};
+
+// cancel request
+queueSchema.methods.cancel = function () {
+  this.status = "cancelled";
+};
+
+module.exports = mongoose.model("CustomerQueue", queueSchema);

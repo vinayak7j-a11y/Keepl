@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Keepl – Register Shop</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" href="/style.css">
+
+<style>
+
+.message{
+margin-top:10px;
+font-size:14px;
+text-align:center;
+}
+
+.error{
+color:#e74c3c;
+}
+
+.success{
+color:#2ecc71;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="login-card">
+
+<h2>Register Your Shop</h2>
+
+<form id="registerForm">
+
+<input id="name" placeholder="Shop Name" required>
+
+<input id="ownerName" placeholder="Owner Name" required>
+
+<input id="phone" type="tel" placeholder="Phone Number" required>
+
+<input id="password" type="password" placeholder="Password (min 6 chars)" required>
+
+<button id="registerBtn" type="submit">Register</button>
+
+</form>
+
+<div id="message" class="message"></div>
+
+<p style="text-align:center;margin-top:15px;">
+Already have an account?
+<a href="/">Login</a>
+</p>
+
+</div>
+
+<script>
+
+const form = document.getElementById("registerForm")
+
+form.addEventListener("submit", register)
+
+async function register(e){
+
+e.preventDefault()
+
+const name = document.getElementById("name").value.trim()
+const ownerName = document.getElementById("ownerName").value.trim()
+const phone = document.getElementById("phone").value.trim()
+const password = document.getElementById("password").value.trim()
+
+const messageBox = document.getElementById("message")
+const button = document.getElementById("registerBtn")
+
+messageBox.innerHTML = ""
+
+/* ===== VALIDATION ===== */
+
+if(!name || !ownerName || !phone || !password){
+
+messageBox.innerHTML = "<span class='error'>All fields are required</span>"
+return
+
+}
+
+if(phone.length < 10){
+
+messageBox.innerHTML = "<span class='error'>Enter a valid phone number</span>"
+return
+
+}
+
+if(password.length < 6){
+
+messageBox.innerHTML = "<span class='error'>Password must be at least 6 characters</span>"
+return
+
+}
+
+/* ===== LOADING STATE ===== */
+
+button.disabled = true
+button.innerText = "Registering..."
+
+try{
+
+const res = await fetch("/api/shops/register",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body: JSON.stringify({
+name,
+ownerName,
+phone,
+password
+})
+
+})
+
+const data = await res.json()
+
+if(res.ok && data.shopId){
+
+messageBox.innerHTML = "<span class='success'>Shop registered successfully</span>"
+
+setTimeout(()=>{
+window.location.href="/"
+},1500)
+
+}else{
+
+messageBox.innerHTML = `<span class="error">${data.message || "Registration failed"}</span>`
+
+}
+
+}catch(err){
+
+console.error(err)
+
+messageBox.innerHTML = "<span class='error'>Server error. Please try again</span>"
+
+}
+
+/* ===== RESET BUTTON ===== */
+
+button.disabled = false
+button.innerText = "Register"
+
+}
+
+</script>
+
+</body>
+
+</html>

@@ -16,34 +16,36 @@ const posterRoutes = require("./routes/posterRoutes");
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+/* =========================
+   APP SETTINGS
+========================= */
+
+app.set("trust proxy", 1); // useful for deployments (Render, Heroku)
+
+/* =========================
+   MIDDLEWARE
+========================= */
+
+app.use(
+  cors({
+    origin: "*", // later restrict to your frontend domain
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  })
+);
+
+app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.get("/dashboard/:shopId", async (req,res)=>{
 
-const shopId = req.params.shopId
+/* =========================
+   STATIC FILES
+========================= */
 
-const shop = await Shop.findOne({ shopId })
+app.use(express.static(path.join(__dirname, "public")));
 
-if(!shop){
+/* =========================
+   VIEW ENGINE
+========================= */
 
-return res.send("Shop not found")
-
-}
-
-res.render("dashboard",{
-
-shopName: shop.name,
-qrCode: shop.qrCode,
-shopId: shop.shopId
-
-})
-
-})
-// static files
-app.use(express.static("public"));
-
-// view engine
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
@@ -65,24 +67,65 @@ app.use("/", customerRoutes);
 app.use("/", dashboardRoutes);
 app.use("/", posterRoutes);
 
-const PORT = process.env.PORT || 5050;
+/* =========================
+   HEALTH CHECK
+========================= */
 
-console.log("Attempting Mongo Connection...");
+app.get("/health", (req, res) => {
+  res.json({
+    status: "running",
+    service: "Keepl API",
+    time: new Date()
+  });
+});
+
+/* =========================
+   404 HANDLER
+========================= */
+
+app.use((req, res) => {
+  res.status(404).send("Page not found");
+});
+
+/* =========================
+   ERROR HANDLER
+========================= */
+
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+
+  res.status(500).json({
+    message: "Internal server error"
+  });
+});
 
 /* =========================
    DATABASE CONNECTION
 ========================= */
 
-mongoose.connect(process.env.MONGO_URI)
-.then(() => {
+const PORT = process.env.PORT || 5050;
+
+async function startServer() {
+
+  try {
+
+    await mongoose.connect(process.env.MONGO_URI, {
+      autoIndex: true
+    });
 
     console.log("MongoDB Connected ✅");
 
     app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
 
-})
-.catch((err) => {
-    console.error("MongoDB connection error:", err);
-});
+  } catch (error) {
+
+    console.error("MongoDB connection error:", error);
+    process.exit(1);
+
+  }
+
+}
+
+startServer();

@@ -7,6 +7,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2f80ed">
+
 <style>
 
 body{
@@ -21,14 +24,23 @@ display:flex;
 justify-content:space-between;
 align-items:center;
 margin-bottom:25px;
+flex-wrap:wrap;
+gap:10px;
+}
+
+.header-buttons{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
 }
 
 h1{
 margin:0;
+font-size:24px;
 }
 
 button{
-background:black;
+background:#2f80ed;
 color:white;
 border:none;
 padding:10px 16px;
@@ -38,7 +50,15 @@ font-size:14px;
 }
 
 button:hover{
-opacity:0.9;
+background:#1c60b3;
+}
+
+.logout{
+background:#e74c3c;
+}
+
+.logout:hover{
+background:#c0392b;
 }
 
 .stats{
@@ -55,6 +75,13 @@ border-radius:10px;
 flex:1;
 min-width:200px;
 box-shadow:0 2px 6px rgba(0,0,0,0.05);
+text-align:center;
+}
+
+.statBox p{
+font-size:24px;
+font-weight:bold;
+margin-top:10px;
 }
 
 .card{
@@ -84,13 +111,6 @@ background:#fafafa;
 text-align:center;
 }
 
-.qrSection img{
-margin-top:10px;
-border:1px solid #eee;
-padding:10px;
-background:white;
-}
-
 .empty{
 text-align:center;
 padding:20px;
@@ -101,8 +121,35 @@ input{
 padding:8px;
 border-radius:6px;
 border:1px solid #ddd;
-margin-right:10px;
 width:120px;
+}
+
+.success{
+color:green;
+font-size:13px;
+margin-top:5px;
+}
+
+.error{
+color:red;
+font-size:13px;
+margin-top:5px;
+}
+
+#installBtn{
+display:none;
+}
+
+@media(max-width:600px){
+
+body{
+padding:15px;
+}
+
+.statBox{
+min-width:100%;
+}
+
 }
 
 </style>
@@ -115,9 +162,21 @@ width:120px;
 
 <h1><%= shop.name %> Dashboard</h1>
 
+<div class="header-buttons">
+
+<button id="installBtn">
+Install App
+</button>
+
 <a href="/poster/<%= shop.shopId %>">
 <button>Download QR Poster</button>
 </a>
+
+<button class="logout" onclick="logout()">
+Logout
+</button>
+
+</div>
 
 </div>
 
@@ -136,7 +195,7 @@ width:120px;
 
 <div class="statBox">
 <h3>Total Waiting</h3>
-<p><%= customers.length %></p>
+<p id="waitingCount"><%= customers.length %></p>
 </div>
 
 </div>
@@ -159,15 +218,21 @@ No customers in queue
 <tr>
 <th>Name</th>
 <th>Phone</th>
+<th>Visits</th>
+<th>Total Spent</th>
+<th>Points</th>
 <th>Action</th>
 </tr>
 
 <% customers.forEach(customer => { %>
 
-<tr>
+<tr id="row-<%= customer.phone %>">
 
-<td><%= customer.name %></td>
+<td><%= customer.name || "Customer" %></td>
 <td><%= customer.phone %></td>
+<td><%= customer.visits || 0 %></td>
+<td>₹<%= customer.totalSpent || 0 %></td>
+<td><%= customer.points || 0 %></td>
 
 <td>
 
@@ -177,9 +242,11 @@ id="amount-<%= customer.phone %>"
 placeholder="Bill Amount"
 >
 
-<button onclick="givePoints('<%= customer.phone %>')">
+<button onclick="givePoints('<%= customer.phone %>', this)">
 Give Points
 </button>
+
+<div id="msg-<%= customer.phone %>"></div>
 
 </td>
 
@@ -198,7 +265,11 @@ Give Points
 
 <h3>Your Shop QR</h3>
 
-<img src="<%= shop.qrCode %>" width="200">
+<img 
+src="<%= shop.qrCode %>" 
+width="200"
+alt="Shop QR Code"
+style="border-radius:10px;padding:10px;background:white;box-shadow:0 4px 10px rgba(0,0,0,0.08);">
 
 <p>Customers scan this QR to earn rewards</p>
 
@@ -207,19 +278,56 @@ Give Points
 
 <script>
 
-async function givePoints(phone){
+/* =========================
+SESSION CHECK
+========================= */
+
+const token = localStorage.getItem("token")
+const shopId = localStorage.getItem("shopId")
+
+if(!token || !shopId){
+window.location.href="/"
+}
+
+
+/* =========================
+LOGOUT
+========================= */
+
+function logout(){
+
+if(confirm("Are you sure you want to logout?")){
+
+localStorage.removeItem("token")
+localStorage.removeItem("shopId")
+localStorage.removeItem("qrCode")
+
+window.location.href="/"
+
+}
+
+}
+
+
+/* =========================
+ADD POINTS
+========================= */
+
+async function givePoints(phone,btn){
 
 const amountInput = document.getElementById(`amount-${phone}`)
-
 const billAmount = amountInput.value
+const msgBox = document.getElementById(`msg-${phone}`)
 
 if(!billAmount){
 
-alert("Enter bill amount")
-
+msgBox.innerHTML="<span class='error'>Enter bill amount</span>"
 return
 
 }
+
+btn.disabled=true
+btn.innerText="Processing..."
 
 const shopId = "<%= shop.shopId %>"
 
@@ -243,15 +351,74 @@ billAmount
 
 const data = await res.json()
 
-alert(`Points Added: ${data.pointsEarned}`)
+msgBox.innerHTML=`<span class="success">+${data.pointsEarned} points added</span>`
 
-location.reload()
+setTimeout(()=>{
+
+const row = document.getElementById(`row-${phone}`)
+
+if(row) row.remove()
+
+const waiting = document.getElementById("waitingCount")
+
+if(waiting && waiting.innerText > 0){
+waiting.innerText = Number(waiting.innerText) - 1
+}
+
+},700)
 
 }catch(err){
 
-alert("Error adding points")
+msgBox.innerHTML="<span class='error'>Error adding points</span>"
 
 }
+
+btn.disabled=false
+btn.innerText="Give Points"
+
+}
+
+
+/* =========================
+INSTALL APP
+========================= */
+
+let deferredPrompt;
+
+window.addEventListener("beforeinstallprompt",(e)=>{
+
+e.preventDefault();
+
+deferredPrompt = e;
+
+const installBtn = document.getElementById("installBtn");
+
+installBtn.style.display="inline-block";
+
+installBtn.onclick = async ()=>{
+
+deferredPrompt.prompt();
+
+const choice = await deferredPrompt.userChoice;
+
+if(choice.outcome === "accepted"){
+installBtn.style.display="none";
+}
+
+};
+
+});
+
+
+/* =========================
+SERVICE WORKER
+========================= */
+
+if("serviceWorker" in navigator){
+
+navigator.serviceWorker
+.register("/sw.js")
+.then(()=>console.log("Service Worker registered"))
 
 }
 
@@ -259,4 +426,6 @@ alert("Error adding points")
 
 </body>
 
-</html>
+</html> 
+
+

@@ -1,8 +1,14 @@
 const express = require("express");
 const router = express.Router();
 
-const { downloadPoster } = require("../controllers/posterController");
+const posterController = require("../controllers/posterController");
+const authMiddleware = require("../middleware/authMiddleware");
 
-router.get("/poster/:shopId", downloadPoster);
+/* =========================
+   POSTER ROUTES
+========================= */
+
+// Download shop QR poster
+router.get("/poster/:shopId", authMiddleware, posterController.downloadPoster);
 
 module.exports = router;

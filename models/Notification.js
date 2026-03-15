@@ -1,33 +1,63 @@
 const mongoose = require("mongoose");
 
-const notificationSchema = new mongoose.Schema({
-
+const notificationSchema = new mongoose.Schema(
+{
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
+    ref: "User",
+    required: true,
+    index: true
   },
 
   shopId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Shop"
+    ref: "Shop",
+    required: true,
+    index: true
   },
 
-  phone: String,
+  phone: {
+    type: String,
+    required: true,
+    trim: true,
+    index: true
+  },
 
-  customerName: String,
+  customerName: {
+    type: String,
+    trim: true,
+    default: ""
+  },
 
-  points: Number,
+  points: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
 
   status: {
     type: String,
-    default: "pending"
+    enum: ["pending", "processed", "rejected", "expired"],
+    default: "pending",
+    index: true
   },
 
-  createdAt: {
-    type: Date,
-    default: Date.now
+  source: {
+    type: String,
+    enum: ["scan", "manual"],
+    default: "scan"
   }
 
+},
+{
+  timestamps: true
 });
+
+/* =========================
+   INDEXES (QUEUE SPEED)
+========================= */
+
+notificationSchema.index({ shopId: 1, status: 1 });
+notificationSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Notification", notificationSchema);

@@ -5,33 +5,58 @@ const Transaction = require("../models/Transaction");
 const Notification = require("../models/Notification");
 const CustomerQueue = require("../models/CustomerQueue");
 
+
+/* =========================
+   ADD TRANSACTION
+========================= */
+
 exports.addTransaction = async (req, res) => {
 
   try {
 
-    const { phone, shopId } = req.body;
-    const billAmount = Number(req.body.billAmount);
+    const { phone, shopId, billAmount } = req.body;
 
-    if (!billAmount || billAmount <= 0) {
-      return res.json({ message: "Invalid bill amount" });
+    const amount = Number(billAmount);
+
+    /* ===== VALIDATION ===== */
+
+    if (!phone || !shopId) {
+      return res.status(400).json({
+        message: "Phone and shopId required"
+      });
     }
 
-    let user = await User.findOne({ phone });
-
-    if (!user) {
-      user = new User({ phone });
-      await user.save();
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        message: "Invalid bill amount"
+      });
     }
+
+    /* ===== FIND SHOP ===== */
 
     const shop = await Shop.findOne({ shopId });
 
     if (!shop) {
-      return res.json({ message: "Shop not found" });
+      return res.status(404).json({
+        message: "Shop not found"
+      });
     }
 
-    const rewardRate = Number(shop.rewardRate || shop.rewardRule || 0);
+    /* ===== FIND OR CREATE USER ===== */
 
-    const pointsEarned = Math.floor((billAmount / 100) * rewardRate);
+    let user = await User.findOne({ phone });
+
+    if (!user) {
+      user = await User.create({ phone });
+    }
+
+    /* ===== CALCULATE POINTS ===== */
+
+    const pointsEarned = shop.calculatePoints
+      ? shop.calculatePoints(amount)
+      : Math.floor((amount / 100) * (shop.rewardRate || 10));
+
+    /* ===== FIND OR CREATE WALLET ===== */
 
     let wallet = await Wallet.findOne({
       userId: user._id,
@@ -39,25 +64,52 @@ exports.addTransaction = async (req, res) => {
     });
 
     if (!wallet) {
-      wallet = new Wallet({
+
+      wallet = await Wallet.create({
         userId: user._id,
         shopId: shop._id,
-        points: 0
+        points: 0,
+        totalEarned: 0
       });
+
     }
 
-    wallet.points = (wallet.points || 0) + pointsEarned;
+    wallet.points += pointsEarned;
+    wallet.totalEarned = (wallet.totalEarned || 0) + pointsEarned;
+    wallet.lastTransaction = new Date();
+
     await wallet.save();
 
-    const transaction = new Transaction({
+    /* ===== RECORD TRANSACTION ===== */
+
+    await Transaction.create({
       userId: user._id,
       shopId: shop._id,
       type: "earn",
-      billAmount,
-      points: pointsEarned
+      billAmount: amount,
+      points: pointsEarned,
+      phone,
+      source: "manual"
     });
 
-    await transaction.save();
+    /* ===== UPDATE USER ANALYTICS ===== */
+
+    user.totalVisits = (user.totalVisits || 0) + 1;
+    user.totalSpent = (user.totalSpent || 0) + amount;
+    user.totalPointsEarned = (user.totalPointsEarned || 0) + pointsEarned;
+    user.lastVisit = new Date();
+
+    await user.save();
+
+    /* ===== UPDATE SHOP ANALYTICS ===== */
+
+    shop.totalTransactions = (shop.totalTransactions || 0) + 1;
+    shop.totalRevenue = (shop.totalRevenue || 0) + amount;
+    shop.totalPointsIssued = (shop.totalPointsIssued || 0) + pointsEarned;
+
+    await shop.save();
+
+    /* ===== COMPLETE QUEUE ITEM ===== */
 
     await CustomerQueue.findOneAndUpdate(
       {
@@ -71,24 +123,18 @@ exports.addTransaction = async (req, res) => {
       { sort: { createdAt: 1 } }
     );
 
-    const message = `Hi ${user.name || "Customer"},
+    /* ===== CREATE NOTIFICATION ===== */
 
-You earned ${pointsEarned} points at ${shop.name}.
-
-Total Points: ${wallet.points}
-
-Thanks for shopping!
-Keepl`;
-
-    const notification = new Notification({
-      customerName: user.name || "Customer",
+    await Notification.create({
+      userId: user._id,
+      shopId: shop._id,
       phone,
-      shopName: shop.name,
+      customerName: user.name || "Customer",
       points: pointsEarned,
-      message
+      status: "processed"
     });
 
-    await notification.save();
+    /* ===== RESPONSE ===== */
 
     res.json({
       message: "Points added",
@@ -98,7 +144,89 @@ Keepl`;
 
   } catch (error) {
 
-    res.status(500).json({ error: error.message });
+    console.error("Transaction error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+};
+
+
+/* =========================
+   GET SHOP TRANSACTIONS
+========================= */
+
+exports.getTransactions = async (req, res) => {
+
+  try {
+
+    const { shopId } = req.params;
+
+    const shop = await Shop.findOne({ shopId });
+
+    if (!shop) {
+      return res.status(404).json({
+        message: "Shop not found"
+      });
+    }
+
+    const transactions = await Transaction.find({
+      shopId: shop._id
+    })
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    res.json(transactions);
+
+  } catch (error) {
+
+    console.error("Get transactions error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+
+  }
+
+};
+
+
+/* =========================
+   GET CUSTOMER TRANSACTIONS
+========================= */
+
+exports.getCustomerTransactions = async (req, res) => {
+
+  try {
+
+    const { phone } = req.params;
+
+    const user = await User.findOne({ phone });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Customer not found"
+      });
+    }
+
+    const transactions = await Transaction.find({
+      userId: user._id
+    })
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    res.json(transactions);
+
+  } catch (error) {
+
+    console.error("Customer transactions error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
 
   }
 
