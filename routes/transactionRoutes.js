@@ -5,37 +5,32 @@ const transactionController = require("../controllers/transactionController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 /* =========================
-   ADD TRANSACTION
-   (Shop gives points)
+   ADD TRANSACTION (ADD POINTS)
 ========================= */
 
 router.post(
-  "/transactions",
+  "/add-transaction",
   authMiddleware,
   transactionController.addTransaction
 );
-
 
 /* =========================
    SHOP TRANSACTION HISTORY
 ========================= */
 
 router.get(
-  "/transactions/:shopId",
+  "/shop-transactions/:shopId",
   authMiddleware,
   transactionController.getTransactions
 );
 
-
 /* =========================
-   CUSTOMER TRANSACTIONS
+   CUSTOMER TRANSACTION HISTORY
 ========================= */
 
 router.get(
-  "/transactions/customer/:phone",
-  authMiddleware,
+  "/customer-transactions/:phone",
   transactionController.getCustomerTransactions
 );
-
 
 module.exports = router;
