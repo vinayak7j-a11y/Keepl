@@ -1,35 +1,13 @@
 const express = require("express");
 const router = express.Router();
 
-const dashboardController = require("../controllers/dashboardController");
+const { getDashboard, getStats } = require("../controllers/dashboardController");
 const authMiddleware = require("../middleware/authMiddleware");
 
-/* =========================
-   DASHBOARD ROUTES (SECURE)
-========================= */
+/* Dashboard page (NO auth middleware) */
+router.get("/dashboard/:shopId", getDashboard);
 
-router.get(
-  "/dashboard/:shopId",
-  authMiddleware,
-  dashboardController.getDashboard
-);
-
-router.get(
-  "/api/dashboard/:shopId",
-  authMiddleware,
-  dashboardController.getStats
-);
-
-router.get(
-  "/dashboard/:shopId/customers",
-  authMiddleware,
-  dashboardController.getCustomerAnalytics
-);
-
-router.get(
-  "/dashboard/:shopId/revenue",
-  authMiddleware,
-  dashboardController.getRevenueAnalytics
-);
+/* Stats API (protected) */
+router.get("/api/dashboard/:shopId", authMiddleware, getStats);
 
 module.exports = router;
