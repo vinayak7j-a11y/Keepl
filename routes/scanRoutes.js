@@ -1,6 +1,63 @@
 const express = require("express");
 const router = express.Router();
+
 const Shop = require("../models/Shop");
+const CustomerQueue = require("../models/CustomerQueue");
+
+
+/* =========================
+   CAPTURE CUSTOMER
+========================= */
+
+router.post("/capture", async (req, res) => {
+
+  try {
+
+    const { name, phone, shopId } = req.body;
+
+    if (!name || !phone || !shopId) {
+      return res.status(400).send("Missing details");
+    }
+
+    const shop = await Shop.findOne({ shopId });
+
+    if (!shop) {
+      return res.status(404).send("Shop not found");
+    }
+
+    /* CHECK IF ALREADY WAITING */
+
+    const existing = await CustomerQueue.findOne({
+      phone,
+      shopId: shop._id,
+      status: "waiting"
+    });
+
+    if (existing) {
+      return res.redirect(`/s/${shopId}?already=true`);
+    }
+
+    /* CREATE QUEUE ENTRY */
+
+    await CustomerQueue.create({
+      name,
+      phone,
+      shopId: shop._id,
+      status: "waiting"
+    });
+
+    res.redirect(`/s/${shopId}?joined=true`);
+
+  } catch (error) {
+
+    console.error("Capture error:", error);
+
+    res.status(500).send("Server error");
+
+  }
+
+});
+
 
 /* =========================
    CUSTOMER SCAN PAGE
@@ -22,7 +79,6 @@ router.get("/s/:shopId", async (req, res) => {
       return res.status(404).send("Shop not found");
     }
 
-    // prevent HTML injection
     const shopName = String(shop.name)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -31,7 +87,6 @@ router.get("/s/:shopId", async (req, res) => {
     res.send(`
 <!DOCTYPE html>
 <html>
-
 <head>
 
 <title>${shopName} Rewards</title>
@@ -60,10 +115,6 @@ text-align:center;
 box-shadow:0 4px 10px rgba(0,0,0,0.1);
 }
 
-h2{
-margin-top:0;
-}
-
 input{
 width:100%;
 padding:12px;
@@ -71,7 +122,6 @@ margin-top:12px;
 border-radius:6px;
 border:1px solid #ccc;
 font-size:14px;
-box-sizing:border-box;
 }
 
 button{
@@ -110,12 +160,7 @@ color:#888;
 
 <form method="POST" action="/capture" onsubmit="handleSubmit()">
 
-<input
-name="name"
-placeholder="Your Name"
-required
-maxlength="80"
-/>
+<input name="name" placeholder="Your Name" required maxlength="80"/>
 
 <input
 type="tel"
@@ -126,11 +171,7 @@ inputmode="numeric"
 required
 />
 
-<input
-type="hidden"
-name="shopId"
-value="${shopId}"
-/>
+<input type="hidden" name="shopId" value="${shopId}" />
 
 <button type="submit" id="submitBtn">
 Join Rewards
@@ -147,18 +188,14 @@ Powered by Keepl
 <script>
 
 function handleSubmit(){
-
 const btn = document.getElementById("submitBtn")
-
 btn.disabled = true
 btn.innerText = "Submitting..."
-
 }
 
 </script>
 
 </body>
-
 </html>
 `);
 

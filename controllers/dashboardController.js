@@ -26,23 +26,21 @@ exports.getStats = async (req, res) => {
 
     /* TRANSACTION STATS */
 
-    const transactionStats = await Transaction.aggregate([
-      { $match: { shopId: shop._id } },
-      {
-        $group: {
-          _id: null,
-          totalTransactions: { $sum: 1 },
-          revenue: { $sum: { $ifNull: ["$billAmount", 0] } },
-          totalPointsIssued: { $sum: { $ifNull: ["$points", 0] } }
-        }
-      }
-    ]);
+    const transactions = await Transaction.find({
+      shopId: shop._id
+    });
 
-    const stats = transactionStats[0] || {
-      totalTransactions: 0,
-      revenue: 0,
-      totalPointsIssued: 0
-    };
+    const totalTransactions = transactions.length;
+
+    const revenue = transactions.reduce(
+      (sum, t) => sum + (t.billAmount || 0),
+      0
+    );
+
+    const totalPointsIssued = transactions.reduce(
+      (sum, t) => sum + (t.points || 0),
+      0
+    );
 
     /* TOTAL CUSTOMERS */
 
@@ -52,26 +50,22 @@ exports.getStats = async (req, res) => {
 
     /* REPEAT CUSTOMERS */
 
-    const repeatCustomers = await Transaction.aggregate([
-      { $match: { shopId: shop._id } },
-      {
-        $group: {
-          _id: "$userId",
-          visits: { $sum: 1 }
-        }
-      },
-      { $match: { visits: { $gt: 1 } } },
-      { $count: "repeatCount" }
-    ]);
+    const visitMap = {};
 
-    const repeatCount = repeatCustomers[0]?.repeatCount || 0;
+    transactions.forEach(t => {
+      const id = String(t.userId);
+      visitMap[id] = (visitMap[id] || 0) + 1;
+    });
+
+    const repeatCustomers = Object.values(visitMap)
+      .filter(v => v > 1).length;
 
     res.json({
       totalCustomers,
-      totalTransactions: stats.totalTransactions,
-      totalPointsIssued: stats.totalPointsIssued,
-      revenue: stats.revenue,
-      repeatCustomers: repeatCount
+      totalTransactions,
+      totalPointsIssued,
+      revenue,
+      repeatCustomers
     });
 
   } catch (error) {
@@ -123,32 +117,23 @@ exports.getDashboard = async (req, res) => {
     const today = new Date();
     today.setHours(0,0,0,0);
 
-    const todayStats = await Transaction.aggregate([
-      {
-        $match: {
-          shopId: shop._id,
-          createdAt: { $gte: today }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          customersToday: { $sum: 1 },
-          pointsToday: { $sum: { $ifNull: ["$points", 0] } }
-        }
-      }
-    ]);
+    const todayTransactions = await Transaction.find({
+      shopId: shop._id,
+      createdAt: { $gte: today }
+    });
 
-    const stats = todayStats[0] || {
-      customersToday: 0,
-      pointsToday: 0
-    };
+    const customersToday = todayTransactions.length;
+
+    const pointsToday = todayTransactions.reduce(
+      (sum, t) => sum + (t.points || 0),
+      0
+    );
 
     res.render("dashboard", {
       shop,
       customers,
-      customersToday: stats.customersToday,
-      pointsToday: stats.pointsToday
+      customersToday,
+      pointsToday
     });
 
   } catch (error) {
@@ -175,7 +160,9 @@ exports.getCustomerAnalytics = async (req, res) => {
     const shop = await Shop.findOne({ shopId });
 
     if (!shop) {
-      return res.status(404).json({ message: "Shop not found" });
+      return res.status(404).json({
+        message: "Shop not found"
+      });
     }
 
     const totalCustomers = await Wallet.countDocuments({
@@ -190,7 +177,9 @@ exports.getCustomerAnalytics = async (req, res) => {
 
     console.error("Customer analytics error:", error);
 
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({
+      message: "Server error"
+    });
 
   }
 
@@ -210,20 +199,19 @@ exports.getRevenueAnalytics = async (req, res) => {
     const shop = await Shop.findOne({ shopId });
 
     if (!shop) {
-      return res.status(404).json({ message: "Shop not found" });
+      return res.status(404).json({
+        message: "Shop not found"
+      });
     }
 
-    const revenueStats = await Transaction.aggregate([
-      { $match: { shopId: shop._id } },
-      {
-        $group: {
-          _id: null,
-          revenue: { $sum: { $ifNull: ["$billAmount", 0] } }
-        }
-      }
-    ]);
+    const transactions = await Transaction.find({
+      shopId: shop._id
+    });
 
-    const revenue = revenueStats[0]?.revenue || 0;
+    const revenue = transactions.reduce(
+      (sum, t) => sum + (t.billAmount || 0),
+      0
+    );
 
     res.json({
       revenue
@@ -233,7 +221,9 @@ exports.getRevenueAnalytics = async (req, res) => {
 
     console.error("Revenue analytics error:", error);
 
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({
+      message: "Server error"
+    });
 
   }
 

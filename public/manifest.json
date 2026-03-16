@@ -1,12 +1,10 @@
 {
-  "name": "Keepl Shop Dashboard",
+  "name": "Keepl",
   "short_name": "Keepl",
-  "description": "Customer loyalty and rewards dashboard for local shops",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2f80ed",
-  "orientation": "portrait",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "/icons/keepl-192.png",
