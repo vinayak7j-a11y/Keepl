@@ -117,11 +117,16 @@ exports.addTransaction = async (req, res) => {
 
     /* ===== REMOVE CUSTOMER FROM QUEUE ===== */
 
-    await CustomerQueue.deleteOne({
-      phone,
-      shopId: shop._id
-    });
+const queueItem = await CustomerQueue.findOne({
+  phone,
+  shopId: shop._id,
+  status: "waiting"
+}).sort({ createdAt: 1 });
 
+if (queueItem) {
+  await CustomerQueue.findByIdAndDelete(queueItem._id);
+}
+   
     /* ===== CREATE NOTIFICATION ===== */
 
     await Notification.create({
