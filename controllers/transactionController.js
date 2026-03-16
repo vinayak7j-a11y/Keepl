@@ -18,18 +18,12 @@ exports.addTransaction = async (req, res) => {
 
     const amount = Number(billAmount);
 
-    /* ===== VALIDATION ===== */
-
     if (!phone || !shopId) {
-      return res.status(400).json({
-        message: "Phone and shopId required"
-      });
+      return res.status(400).json({ message: "Phone and shopId required" });
     }
 
     if (!amount || amount <= 0) {
-      return res.status(400).json({
-        message: "Invalid bill amount"
-      });
+      return res.status(400).json({ message: "Invalid bill amount" });
     }
 
     /* ===== FIND SHOP ===== */
@@ -37,9 +31,7 @@ exports.addTransaction = async (req, res) => {
     const shop = await Shop.findOne({ shopId });
 
     if (!shop) {
-      return res.status(404).json({
-        message: "Shop not found"
-      });
+      return res.status(404).json({ message: "Shop not found" });
     }
 
     /* ===== FIND OR CREATE USER ===== */
@@ -48,6 +40,20 @@ exports.addTransaction = async (req, res) => {
 
     if (!user) {
       user = await User.create({ phone });
+    }
+
+    /* ===== PREVENT DUPLICATE TRANSACTION ===== */
+
+    const recentTransaction = await Transaction.findOne({
+      phone,
+      shopId: shop._id,
+      createdAt: { $gt: new Date(Date.now() - 10000) }
+    });
+
+    if (recentTransaction) {
+      return res.status(400).json({
+        message: "Transaction already processed"
+      });
     }
 
     /* ===== CALCULATE POINTS ===== */
@@ -64,23 +70,23 @@ exports.addTransaction = async (req, res) => {
     });
 
     if (!wallet) {
-
       wallet = await Wallet.create({
         userId: user._id,
         shopId: shop._id,
         points: 0,
         totalEarned: 0
       });
-
     }
 
+    /* ===== UPDATE WALLET ===== */
+
     wallet.points += pointsEarned;
-    wallet.totalEarned = (wallet.totalEarned || 0) + pointsEarned;
+    wallet.totalEarned += pointsEarned;
     wallet.lastTransaction = new Date();
 
     await wallet.save();
 
-    /* ===== RECORD TRANSACTION ===== */
+    /* ===== CREATE TRANSACTION ===== */
 
     await Transaction.create({
       userId: user._id,
@@ -109,19 +115,12 @@ exports.addTransaction = async (req, res) => {
 
     await shop.save();
 
-    /* ===== COMPLETE QUEUE ITEM ===== */
+    /* ===== REMOVE CUSTOMER FROM QUEUE ===== */
 
-    await CustomerQueue.findOneAndUpdate(
-      {
-        phone,
-        shopId: shop._id,
-        status: "waiting"
-      },
-      {
-        status: "completed"
-      },
-      { sort: { createdAt: 1 } }
-    );
+    await CustomerQueue.deleteOne({
+      phone,
+      shopId: shop._id
+    });
 
     /* ===== CREATE NOTIFICATION ===== */
 
@@ -137,6 +136,7 @@ exports.addTransaction = async (req, res) => {
     /* ===== RESPONSE ===== */
 
     res.json({
+      success: true,
       message: "Points added",
       pointsEarned,
       totalPoints: wallet.points
@@ -168,9 +168,7 @@ exports.getTransactions = async (req, res) => {
     const shop = await Shop.findOne({ shopId });
 
     if (!shop) {
-      return res.status(404).json({
-        message: "Shop not found"
-      });
+      return res.status(404).json({ message: "Shop not found" });
     }
 
     const transactions = await Transaction.find({
@@ -185,9 +183,7 @@ exports.getTransactions = async (req, res) => {
 
     console.error("Get transactions error:", error);
 
-    res.status(500).json({
-      message: "Server error"
-    });
+    res.status(500).json({ message: "Server error" });
 
   }
 
