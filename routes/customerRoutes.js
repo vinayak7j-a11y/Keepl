@@ -1,15 +1,23 @@
 const express = require("express");
 const router = express.Router();
 
-const {
-  captureCustomer,
-  getCustomer
-} = require("../controllers/customerController");
+/* ===== CONTROLLER IMPORT (SAFE) ===== */
+const customerController = require("../controllers/customerController");
 
-/* Customer scan submit */
-router.post("/capture", captureCustomer);
 
-/* Dashboard fetch customer */
-router.get("/customer/:shopId/:phone", getCustomer);
+/* =========================
+   CUSTOMER ROUTES
+========================= */
+
+// 📲 Customer scans QR → submit details
+router.post("/capture", customerController.captureCustomer);
+
+// 📊 Shop dashboard → fetch customer details
+router.get("/customer/:shopId/:phone", customerController.getCustomer);
+
+
+/* =========================
+   EXPORT
+========================= */
 
 module.exports = router;

@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 
 <title>Keepl Dashboard</title>
@@ -11,7 +10,6 @@
 <meta name="theme-color" content="#2f80ed">
 
 <style>
-
 body{
 font-family:Arial;
 background:#f4f6f8;
@@ -141,17 +139,9 @@ display:none;
 }
 
 @media(max-width:600px){
-
-body{
-padding:15px;
+body{ padding:15px; }
+.statBox{ min-width:100%; }
 }
-
-.statBox{
-min-width:100%;
-}
-
-}
-
 </style>
 
 </head>
@@ -164,17 +154,13 @@ min-width:100%;
 
 <div class="header-buttons">
 
-<button id="installBtn">
-Install App
-</button>
+<button id="installBtn">Install App</button>
 
 <a href="/poster/<%= shop.shopId %>">
 <button>Download QR Poster</button>
 </a>
 
-<button class="logout" onclick="logout()">
-Logout
-</button>
+<button class="logout" onclick="logout()">Logout</button>
 
 </div>
 
@@ -205,15 +191,7 @@ Logout
 
 <h3>Customers Waiting</h3>
 
-<% if(customers.length === 0){ %>
-
-<div class="empty">
-No customers in queue
-</div>
-
-<% } else { %>
-
-<table>
+<table id="queueTable">
 
 <tr>
 <th>Name</th>
@@ -224,39 +202,7 @@ No customers in queue
 <th>Action</th>
 </tr>
 
-<% customers.forEach(customer => { %>
-
-<tr id="row-<%= customer.phone %>">
-
-<td><%= customer.name || "Customer" %></td>
-<td><%= customer.phone %></td>
-<td><%= customer.visits || 0 %></td>
-<td>₹<%= customer.totalSpent || 0 %></td>
-<td><%= customer.points || 0 %></td>
-
-<td>
-
-<input 
-type="number" 
-id="amount-<%= customer.phone %>" 
-placeholder="Bill Amount"
->
-
-<button onclick="givePoints('<%= customer.phone %>', this)">
-Give Points
-</button>
-
-<div id="msg-<%= customer.phone %>"></div>
-
-</td>
-
-</tr>
-
-<% }) %>
-
 </table>
-
-<% } %>
 
 </div>
 
@@ -268,7 +214,6 @@ Give Points
 <img 
 src="<%= shop.qrCode %>" 
 width="200"
-alt="Shop QR Code"
 style="border-radius:10px;padding:10px;background:white;box-shadow:0 4px 10px rgba(0,0,0,0.08);">
 
 <p>Customers scan this QR to earn rewards</p>
@@ -283,9 +228,9 @@ SESSION CHECK
 ========================= */
 
 const token = localStorage.getItem("token")
-const shopId = localStorage.getItem("shopId")
+const shopIdLocal = localStorage.getItem("shopId")
 
-if(!token || !shopId){
+if(!token || !shopIdLocal){
 window.location.href="/"
 }
 
@@ -295,16 +240,109 @@ LOGOUT
 ========================= */
 
 function logout(){
-
 if(confirm("Are you sure you want to logout?")){
-
-localStorage.removeItem("token")
-localStorage.removeItem("shopId")
-localStorage.removeItem("qrCode")
-
+localStorage.clear()
 window.location.href="/"
-
 }
+}
+
+
+/* =========================
+SAFE TEXT (XSS PROTECTION)
+========================= */
+
+function safe(text){
+return String(text)
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;");
+}
+
+
+/* =========================
+FETCH QUEUE (OPTIMIZED)
+========================= */
+
+let isFetching = false;
+
+async function fetchQueue(){
+
+  if(isFetching) return;
+  isFetching = true;
+
+  try{
+
+    const shopId = "<%= shop.shopId %>"
+    const res = await fetch(`/api/queue/${shopId}`)
+
+    if(!res.ok){
+      throw new Error("Failed to fetch queue")
+    }
+
+    const data = await res.json()
+
+    const table = document.getElementById("queueTable")
+    const waiting = document.getElementById("waitingCount")
+
+    if(!data.length){
+
+      table.innerHTML = `
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Visits</th>
+        <th>Total Spent</th>
+        <th>Points</th>
+        <th>Action</th>
+      </tr>
+      <tr>
+        <td colspan="6" class="empty">No customers in queue</td>
+      </tr>
+      `
+
+      waiting.innerText = 0
+      return
+    }
+
+    waiting.innerText = data.length
+
+    let rows = ""
+
+    data.forEach(customer => {
+
+      rows += `
+      <tr>
+        <td>${safe(customer.name || "Customer")}</td>
+        <td>${customer.phone}</td>
+        <td>${customer.visits || 0}</td>
+        <td>₹${customer.totalSpent || 0}</td>
+        <td>${customer.points || 0}</td>
+        <td>
+          <input type="number" id="amount-${customer.phone}" placeholder="Bill Amount">
+          <button onclick="givePoints('${customer.phone}', this)">Give Points</button>
+          <div id="msg-${customer.phone}"></div>
+        </td>
+      </tr>
+      `
+
+    })
+
+    table.innerHTML = `
+    <tr>
+      <th>Name</th>
+      <th>Phone</th>
+      <th>Visits</th>
+      <th>Total Spent</th>
+      <th>Points</th>
+      <th>Action</th>
+    </tr>
+    ${rows}
+    `
+
+  }catch(err){
+    console.log("Queue fetch error", err)
+  }finally{
+    isFetching = false;
+  }
 
 }
 
@@ -320,10 +358,8 @@ const billAmount = amountInput.value
 const msgBox = document.getElementById(`msg-${phone}`)
 
 if(!billAmount){
-
 msgBox.innerHTML="<span class='error'>Enter bill amount</span>"
 return
-
 }
 
 btn.disabled=true
@@ -334,43 +370,19 @@ const shopId = "<%= shop.shopId %>"
 try{
 
 const res = await fetch("/api/add-transaction",{
-
 method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body: JSON.stringify({
-phone,
-shopId,
-billAmount
-})
-
+headers:{ "Content-Type":"application/json" },
+body: JSON.stringify({ phone, shopId, billAmount })
 })
 
 const data = await res.json()
 
 msgBox.innerHTML=`<span class="success">+${data.pointsEarned} points added</span>`
 
-setTimeout(()=>{
-
-const row = document.getElementById(`row-${phone}`)
-
-if(row) row.remove()
-
-const waiting = document.getElementById("waitingCount")
-
-if(waiting && waiting.innerText > 0){
-waiting.innerText = Number(waiting.innerText) - 1
-}
-
-},700)
+setTimeout(fetchQueue, 500)
 
 }catch(err){
-
 msgBox.innerHTML="<span class='error'>Error adding points</span>"
-
 }
 
 btn.disabled=false
@@ -380,31 +392,32 @@ btn.innerText="Give Points"
 
 
 /* =========================
+AUTO REFRESH
+========================= */
+
+fetchQueue()
+setInterval(fetchQueue, 3000)
+
+
+/* =========================
 INSTALL APP
 ========================= */
 
 let deferredPrompt;
 
 window.addEventListener("beforeinstallprompt",(e)=>{
-
 e.preventDefault();
-
 deferredPrompt = e;
 
 const installBtn = document.getElementById("installBtn");
-
 installBtn.style.display="inline-block";
 
 installBtn.onclick = async ()=>{
-
 deferredPrompt.prompt();
-
 const choice = await deferredPrompt.userChoice;
-
 if(choice.outcome === "accepted"){
 installBtn.style.display="none";
 }
-
 };
 
 });
@@ -415,17 +428,12 @@ SERVICE WORKER
 ========================= */
 
 if("serviceWorker" in navigator){
-
 navigator.serviceWorker
 .register("/sw.js")
 .then(()=>console.log("Service Worker registered"))
-
 }
 
 </script>
 
 </body>
-
-</html> 
-
-
+</html>

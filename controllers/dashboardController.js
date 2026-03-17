@@ -24,7 +24,7 @@ exports.getStats = async (req, res) => {
       return res.status(404).json({ message: "Shop not found" });
     }
 
-    /* TRANSACTION STATS */
+    /* TRANSACTIONS */
 
     const transactions = await Transaction.find({
       shopId: shop._id
@@ -42,23 +42,29 @@ exports.getStats = async (req, res) => {
       0
     );
 
+
     /* TOTAL CUSTOMERS */
 
     const totalCustomers = await Wallet.countDocuments({
       shopId: shop._id
     });
 
+
     /* REPEAT CUSTOMERS */
 
     const visitMap = {};
 
     transactions.forEach(t => {
-      const id = String(t.userId);
-      visitMap[id] = (visitMap[id] || 0) + 1;
+
+      const user = String(t.userId);
+
+      visitMap[user] = (visitMap[user] || 0) + 1;
+
     });
 
     const repeatCustomers = Object.values(visitMap)
       .filter(v => v > 1).length;
+
 
     res.json({
       totalCustomers,
@@ -81,6 +87,7 @@ exports.getStats = async (req, res) => {
 };
 
 
+
 /* =========================
    DASHBOARD PAGE
 ========================= */
@@ -101,16 +108,18 @@ exports.getDashboard = async (req, res) => {
       return res.status(404).send("Shop not found");
     }
 
-    /* CUSTOMER QUEUE */
+
+    /* CUSTOMER QUEUE (ONLY WAITING CUSTOMERS) */
 
     const customers = await CustomerQueue.find({
       shopId: shop._id,
       status: "waiting"
     })
-    .sort({ createdAt: -1 })
-    .limit(50)
-    .select("name phone createdAt")
-    .lean();
+      .sort({ createdAt: 1 })
+      .limit(50)
+      .select("name phone createdAt")
+      .lean();
+
 
     /* TODAY STATS */
 
@@ -129,6 +138,7 @@ exports.getDashboard = async (req, res) => {
       0
     );
 
+
     res.render("dashboard", {
       shop,
       customers,
@@ -145,6 +155,7 @@ exports.getDashboard = async (req, res) => {
   }
 
 };
+
 
 
 /* =========================
@@ -184,6 +195,7 @@ exports.getCustomerAnalytics = async (req, res) => {
   }
 
 };
+
 
 
 /* =========================

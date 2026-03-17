@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+
 const User = require("../models/User");
 const Shop = require("../models/Shop");
 const Wallet = require("../models/Wallet");
@@ -7,54 +9,46 @@ const CustomerQueue = require("../models/CustomerQueue");
 
 
 /* =========================
-   ADD TRANSACTION
+   ADD TRANSACTION (FINAL FIXED)
 ========================= */
 
 exports.addTransaction = async (req, res) => {
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
 
     const { phone, shopId, billAmount } = req.body;
-
     const amount = Number(billAmount);
 
     if (!phone || !shopId) {
-      return res.status(400).json({ message: "Phone and shopId required" });
+      throw new Error("Phone and shopId required");
     }
 
     if (!amount || amount <= 0) {
-      return res.status(400).json({ message: "Invalid bill amount" });
+      throw new Error("Invalid bill amount");
     }
 
     /* ===== FIND SHOP ===== */
 
-    const shop = await Shop.findOne({ shopId });
+    const shop = await Shop.findOne({ shopId }).session(session);
 
     if (!shop) {
-      return res.status(404).json({ message: "Shop not found" });
+      throw new Error("Shop not found");
     }
 
-    /* ===== FIND OR CREATE USER ===== */
+    /* ===== USER (UPSERT) ===== */
 
-    let user = await User.findOne({ phone });
+    let user = await User.findOneAndUpdate(
+      { phone },
+      { $setOnInsert: { phone } },
+      { new: true, upsert: true, session }
+    );
 
-    if (!user) {
-      user = await User.create({ phone });
-    }
+    /* ===== BETTER IDEMPOTENCY KEY ===== */
 
-    /* ===== PREVENT DUPLICATE TRANSACTION ===== */
-
-    const recentTransaction = await Transaction.findOne({
-      phone,
-      shopId: shop._id,
-      createdAt: { $gt: new Date(Date.now() - 10000) }
-    });
-
-    if (recentTransaction) {
-      return res.status(400).json({
-        message: "Transaction already processed"
-      });
-    }
+    const transactionKey = `${phone}-${shop._id}-${amount}-${Date.now()}`;
 
     /* ===== CALCULATE POINTS ===== */
 
@@ -62,21 +56,13 @@ exports.addTransaction = async (req, res) => {
       ? shop.calculatePoints(amount)
       : Math.floor((amount / 100) * (shop.rewardRate || 10));
 
-    /* ===== FIND OR CREATE WALLET ===== */
+    /* ===== WALLET (UPSERT) ===== */
 
-    let wallet = await Wallet.findOne({
-      userId: user._id,
-      shopId: shop._id
-    });
-
-    if (!wallet) {
-      wallet = await Wallet.create({
-        userId: user._id,
-        shopId: shop._id,
-        points: 0,
-        totalEarned: 0
-      });
-    }
+    let wallet = await Wallet.findOneAndUpdate(
+      { userId: user._id, shopId: shop._id },
+      { $setOnInsert: { points: 0, totalEarned: 0 } },
+      { new: true, upsert: true, session }
+    );
 
     /* ===== UPDATE WALLET ===== */
 
@@ -84,19 +70,20 @@ exports.addTransaction = async (req, res) => {
     wallet.totalEarned += pointsEarned;
     wallet.lastTransaction = new Date();
 
-    await wallet.save();
+    await wallet.save({ session });
 
     /* ===== CREATE TRANSACTION ===== */
 
-    await Transaction.create({
+    await Transaction.create([{
       userId: user._id,
       shopId: shop._id,
       type: "earn",
       billAmount: amount,
       points: pointsEarned,
       phone,
-      source: "manual"
-    });
+      source: "manual",
+      uniqueKey: transactionKey
+    }], { session });
 
     /* ===== UPDATE USER ANALYTICS ===== */
 
@@ -105,7 +92,7 @@ exports.addTransaction = async (req, res) => {
     user.totalPointsEarned = (user.totalPointsEarned || 0) + pointsEarned;
     user.lastVisit = new Date();
 
-    await user.save();
+    await user.save({ session });
 
     /* ===== UPDATE SHOP ANALYTICS ===== */
 
@@ -113,46 +100,57 @@ exports.addTransaction = async (req, res) => {
     shop.totalRevenue = (shop.totalRevenue || 0) + amount;
     shop.totalPointsIssued = (shop.totalPointsIssued || 0) + pointsEarned;
 
-    await shop.save();
+    await shop.save({ session });
 
-    /* ===== REMOVE CUSTOMER FROM QUEUE ===== */
+    /* ===== QUEUE HANDLING (CRITICAL FIX) ===== */
 
-const queueItem = await CustomerQueue.findOne({
-  phone,
-  shopId: shop._id,
-  status: "waiting"
-}).sort({ createdAt: 1 });
+    await CustomerQueue.updateMany(
+      {
+        phone,
+        shopId: shop._id,
+        status: { $in: ["waiting", "processing"] }
+      },
+      {
+        $set: {
+          status: "completed",
+          expiresAt: new Date() // instantly expire
+        }
+      },
+      { session }
+    );
 
-if (queueItem) {
-  await CustomerQueue.findByIdAndDelete(queueItem._id);
-}
-   
     /* ===== CREATE NOTIFICATION ===== */
 
-    await Notification.create({
+    await Notification.create([{
       userId: user._id,
       shopId: shop._id,
       phone,
       customerName: user.name || "Customer",
       points: pointsEarned,
       status: "processed"
-    });
+    }], { session });
 
-    /* ===== RESPONSE ===== */
+    /* ===== COMMIT ===== */
+
+    await session.commitTransaction();
+    session.endSession();
 
     res.json({
       success: true,
-      message: "Points added",
+      message: "Points added successfully",
       pointsEarned,
       totalPoints: wallet.points
     });
 
   } catch (error) {
 
+    await session.abortTransaction();
+    session.endSession();
+
     console.error("Transaction error:", error);
 
-    res.status(500).json({
-      message: "Server error"
+    res.status(400).json({
+      message: error.message || "Server error"
     });
 
   }

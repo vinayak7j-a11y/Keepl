@@ -30,7 +30,8 @@ const queueSchema = new mongoose.Schema(
   },
 
   expiresAt: {
-    type: Date
+    type: Date,
+    default: () => new Date(Date.now() + 1000 * 60 * 10) // 10 minutes
   }
 
 },
@@ -38,30 +39,56 @@ const queueSchema = new mongoose.Schema(
   timestamps: true
 });
 
+
 /* =========================
-   INDEXES (FAST QUEUE LOOKUP)
+   INDEXES (IMPORTANT)
 ========================= */
 
+// Fast lookup for dashboard (active queue)
 queueSchema.index({ shopId: 1, status: 1 });
+
+// Prevent duplicate active entries per user per shop
+queueSchema.index(
+  { phone: 1, shopId: 1, status: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ["waiting", "processing"] }
+    }
+  }
+);
+
+// Auto-delete expired entries (TTL)
+queueSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+// Latest first sorting
 queueSchema.index({ createdAt: -1 });
 
+
 /* =========================
-   METHODS
+   METHODS (SAFE FLOW)
 ========================= */
 
-// mark as processing
+// Move to processing
 queueSchema.methods.startProcessing = function () {
-  this.status = "processing";
+  if (this.status === "waiting") {
+    this.status = "processing";
+  }
 };
 
-// mark as completed
+// Complete request
 queueSchema.methods.complete = function () {
-  this.status = "completed";
+  if (this.status === "waiting" || this.status === "processing") {
+    this.status = "completed";
+  }
 };
 
-// cancel request
+// Cancel request
 queueSchema.methods.cancel = function () {
-  this.status = "cancelled";
+  if (this.status !== "completed") {
+    this.status = "cancelled";
+  }
 };
+
 
 module.exports = mongoose.model("CustomerQueue", queueSchema);
