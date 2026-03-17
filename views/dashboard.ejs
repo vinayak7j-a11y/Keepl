@@ -149,11 +149,9 @@ body{ padding:15px; }
 <body>
 
 <div class="header">
-
 <h1><%= shop.name %> Dashboard</h1>
 
 <div class="header-buttons">
-
 <button id="installBtn">Install App</button>
 
 <a href="/poster/<%= shop.shopId %>">
@@ -161,14 +159,10 @@ body{ padding:15px; }
 </a>
 
 <button class="logout" onclick="logout()">Logout</button>
-
 </div>
-
 </div>
-
 
 <div class="stats">
-
 <div class="statBox">
 <h3>Customers Today</h3>
 <p><%= customersToday %></p>
@@ -183,16 +177,12 @@ body{ padding:15px; }
 <h3>Total Waiting</h3>
 <p id="waitingCount"><%= customers.length %></p>
 </div>
-
 </div>
 
-
 <div class="card">
-
 <h3>Customers Waiting</h3>
 
 <table id="queueTable">
-
 <tr>
 <th>Name</th>
 <th>Phone</th>
@@ -201,14 +191,10 @@ body{ padding:15px; }
 <th>Points</th>
 <th>Action</th>
 </tr>
-
 </table>
-
 </div>
 
-
 <div class="card qrSection">
-
 <h3>Your Shop QR</h3>
 
 <img 
@@ -217,9 +203,7 @@ width="200"
 style="border-radius:10px;padding:10px;background:white;box-shadow:0 4px 10px rgba(0,0,0,0.08);">
 
 <p>Customers scan this QR to earn rewards</p>
-
 </div>
-
 
 <script>
 
@@ -227,39 +211,36 @@ style="border-radius:10px;padding:10px;background:white;box-shadow:0 4px 10px rg
 SESSION CHECK
 ========================= */
 
-const token = localStorage.getItem("token")
-const shopIdLocal = localStorage.getItem("shopId")
+const token = localStorage.getItem("token");
+const shopIdLocal = localStorage.getItem("shopId");
 
 if(!token || !shopIdLocal){
-window.location.href="/"
+  window.location.href="/";
 }
-
 
 /* =========================
 LOGOUT
 ========================= */
 
 function logout(){
-if(confirm("Are you sure you want to logout?")){
-localStorage.clear()
-window.location.href="/"
+  if(confirm("Are you sure you want to logout?")){
+    localStorage.clear();
+    window.location.href="/";
+  }
 }
-}
-
 
 /* =========================
-SAFE TEXT (XSS PROTECTION)
+SAFE TEXT
 ========================= */
 
 function safe(text){
-return String(text)
-.replace(/</g,"&lt;")
-.replace(/>/g,"&gt;");
+  return String(text)
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;");
 }
 
-
 /* =========================
-FETCH QUEUE (OPTIMIZED)
+FETCH QUEUE
 ========================= */
 
 let isFetching = false;
@@ -271,20 +252,31 @@ async function fetchQueue(){
 
   try{
 
-    const shopId = "<%= shop.shopId %>"
-    const res = await fetch(`/api/queue/${shopId}`)
+    const shopId = "<%= shop.shopId %>";
 
-    if(!res.ok){
-      throw new Error("Failed to fetch queue")
+    const res = await fetch(`/api/queue/${shopId}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    if(res.status === 401){
+      alert("Session expired. Please login again.");
+      localStorage.clear();
+      window.location.href = "/";
+      return;
     }
 
-    const data = await res.json()
+    if(!res.ok){
+      throw new Error("Failed to fetch queue");
+    }
 
-    const table = document.getElementById("queueTable")
-    const waiting = document.getElementById("waitingCount")
+    const data = await res.json();
+
+    const table = document.getElementById("queueTable");
+    const waiting = document.getElementById("waitingCount");
 
     if(!data.length){
-
       table.innerHTML = `
       <tr>
         <th>Name</th>
@@ -296,16 +288,14 @@ async function fetchQueue(){
       </tr>
       <tr>
         <td colspan="6" class="empty">No customers in queue</td>
-      </tr>
-      `
-
-      waiting.innerText = 0
-      return
+      </tr>`;
+      waiting.innerText = 0;
+      return;
     }
 
-    waiting.innerText = data.length
+    waiting.innerText = data.length;
 
-    let rows = ""
+    let rows = "";
 
     data.forEach(customer => {
 
@@ -321,10 +311,8 @@ async function fetchQueue(){
           <button onclick="givePoints('${customer.phone}', this)">Give Points</button>
           <div id="msg-${customer.phone}"></div>
         </td>
-      </tr>
-      `
-
-    })
+      </tr>`;
+    });
 
     table.innerHTML = `
     <tr>
@@ -335,17 +323,16 @@ async function fetchQueue(){
       <th>Points</th>
       <th>Action</th>
     </tr>
-    ${rows}
-    `
+    ${rows}`;
 
   }catch(err){
-    console.log("Queue fetch error", err)
+    console.log("Queue error:", err);
+    document.getElementById("queueTable").innerHTML = `
+    <tr><td colspan="6" class="error">Error loading queue</td></tr>`;
   }finally{
     isFetching = false;
   }
-
 }
-
 
 /* =========================
 ADD POINTS
@@ -353,84 +340,100 @@ ADD POINTS
 
 async function givePoints(phone,btn){
 
-const amountInput = document.getElementById(`amount-${phone}`)
-const billAmount = amountInput.value
-const msgBox = document.getElementById(`msg-${phone}`)
+  if(btn.disabled) return;
 
-if(!billAmount){
-msgBox.innerHTML="<span class='error'>Enter bill amount</span>"
-return
+  const amountInput = document.getElementById(`amount-${phone}`);
+  const billAmount = amountInput.value;
+  const msgBox = document.getElementById(`msg-${phone}`);
+
+  if(!billAmount){
+    msgBox.innerHTML="<span class='error'>Enter bill amount</span>";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Processing...";
+
+  const shopId = "<%= shop.shopId %>";
+
+  try{
+
+    const res = await fetch("/api/add-transaction",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ phone, shopId, billAmount })
+    });
+
+    if(res.status === 401){
+      alert("Session expired. Please login again.");
+      localStorage.clear();
+      window.location.href = "/";
+      return;
+    }
+
+    if(!res.ok){
+      throw new Error("Transaction failed");
+    }
+
+    const data = await res.json();
+
+    msgBox.innerHTML=`<span class="success">+${data.pointsEarned} points added</span>`;
+
+    setTimeout(fetchQueue, 500);
+
+  }catch(err){
+    msgBox.innerHTML="<span class='error'>Error adding points</span>";
+  }
+
+  btn.disabled = false;
+  btn.innerText = "Give Points";
 }
-
-btn.disabled=true
-btn.innerText="Processing..."
-
-const shopId = "<%= shop.shopId %>"
-
-try{
-
-const res = await fetch("/api/add-transaction",{
-method:"POST",
-headers:{ "Content-Type":"application/json" },
-body: JSON.stringify({ phone, shopId, billAmount })
-})
-
-const data = await res.json()
-
-msgBox.innerHTML=`<span class="success">+${data.pointsEarned} points added</span>`
-
-setTimeout(fetchQueue, 500)
-
-}catch(err){
-msgBox.innerHTML="<span class='error'>Error adding points</span>"
-}
-
-btn.disabled=false
-btn.innerText="Give Points"
-
-}
-
 
 /* =========================
 AUTO REFRESH
 ========================= */
 
-fetchQueue()
-setInterval(fetchQueue, 3000)
+fetchQueue();
 
+setInterval(() => {
+  if(!document.hidden){
+    fetchQueue();
+  }
+}, 3000);
 
 /* =========================
-INSTALL APP
+PWA INSTALL
 ========================= */
 
 let deferredPrompt;
 
 window.addEventListener("beforeinstallprompt",(e)=>{
-e.preventDefault();
-deferredPrompt = e;
+  e.preventDefault();
+  deferredPrompt = e;
 
-const installBtn = document.getElementById("installBtn");
-installBtn.style.display="inline-block";
+  const btn = document.getElementById("installBtn");
+  btn.style.display="inline-block";
 
-installBtn.onclick = async ()=>{
-deferredPrompt.prompt();
-const choice = await deferredPrompt.userChoice;
-if(choice.outcome === "accepted"){
-installBtn.style.display="none";
-}
-};
-
+  btn.onclick = async ()=>{
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    if(choice.outcome === "accepted"){
+      btn.style.display="none";
+    }
+  };
 });
-
 
 /* =========================
 SERVICE WORKER
 ========================= */
 
 if("serviceWorker" in navigator){
-navigator.serviceWorker
-.register("/sw.js")
-.then(()=>console.log("Service Worker registered"))
+  navigator.serviceWorker
+    .register("/sw.js")
+    .then(()=>console.log("Service Worker registered"));
 }
 
 </script>
