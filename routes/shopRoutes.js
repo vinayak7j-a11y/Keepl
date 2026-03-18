@@ -4,13 +4,19 @@ const router = express.Router();
 const shopController = require("../controllers/shopController");
 
 /* =========================
-   SHOP ROUTES (SAFE)
+   VALIDATION CHECK
 ========================= */
 
-// Register (only if exists)
-router.post("/register", shopController.registerShop || ((req,res)=>res.send("Not implemented")));
+if (!shopController.registerShop || typeof shopController.registerShop !== "function") {
+  console.error("❌ registerShop is missing in shopController");
+  throw new Error("registerShop not implemented properly");
+}
 
-// Login (you already have)
+/* =========================
+   ROUTES
+========================= */
+
+router.post("/register", shopController.registerShop);
 router.post("/login", shopController.loginShop);
 
 module.exports = router;
