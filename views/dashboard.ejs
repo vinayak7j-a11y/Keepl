@@ -201,7 +201,7 @@ style="border-radius:10px;padding:10px;background:white;box-shadow:0 4px 10px rg
 /* =========================
 SESSION CHECK
 ========================= */
-
+const BASE_URL = "https://keepl.onrender.com";
 const token = localStorage.getItem("token");
 const shopIdLocal = localStorage.getItem("shopId");
 
@@ -244,8 +244,8 @@ async function fetchQueue(){
   try{
 
     const shopId = "<%= shop.shopId %>";
-
-    const res = await fetch(`/api/queue/${shopId}`, {
+const res = await fetch(`${BASE_URL}/api/queue/${shopId}`, {
+    
       headers: {
         "Authorization": `Bearer ${token}`
       }
@@ -345,7 +345,7 @@ async function givePoints(phone, queueId, btn){
 
   try{
 
-    const res = await fetch("/api/transactions",{
+    const res = await fetch(`${BASE_URL}/api/transactions`,{
       method:"POST",
       headers:{
         "Content-Type":"application/json",

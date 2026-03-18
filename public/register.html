@@ -60,6 +60,8 @@ Already have an account?
 
 <script>
 
+const BASE_URL = "https://keepl.onrender.com";
+
 const form = document.getElementById("registerForm")
 
 form.addEventListener("submit", register)
@@ -81,24 +83,18 @@ messageBox.innerHTML = ""
 /* ===== VALIDATION ===== */
 
 if(!name || !ownerName || !phone || !password){
-
 messageBox.innerHTML = "<span class='error'>All fields are required</span>"
 return
-
 }
 
 if(phone.length < 10){
-
 messageBox.innerHTML = "<span class='error'>Enter a valid phone number</span>"
 return
-
 }
 
 if(password.length < 6){
-
 messageBox.innerHTML = "<span class='error'>Password must be at least 6 characters</span>"
 return
-
 }
 
 /* ===== LOADING STATE ===== */
@@ -108,7 +104,7 @@ button.innerText = "Registering..."
 
 try{
 
-const res = await fetch("/api/shops/register",{
+const res = await fetch(`${BASE_URL}/api/shops/register`,{
 
 method:"POST",
 
@@ -148,8 +144,6 @@ console.error(err)
 messageBox.innerHTML = "<span class='error'>Server error. Please try again</span>"
 
 }
-
-/* ===== RESET BUTTON ===== */
 
 button.disabled = false
 button.innerText = "Register"
