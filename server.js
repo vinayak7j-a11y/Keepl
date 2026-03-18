@@ -66,7 +66,8 @@ app.get("/", (req, res) => {
    PAGE ROUTES (UI)
 ========================= */
 
-// 🏪 Shop pages
+// 🏪 Shop pages 
+app.use("/api/shops", shopRoutes);
 app.use("/shop", shopPageRoutes);
 
 // 📲 Scan page + capture flow
