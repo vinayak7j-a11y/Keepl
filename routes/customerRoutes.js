@@ -1,20 +1,41 @@
 const express = require("express");
 const router = express.Router();
 
-/* ===== CONTROLLER IMPORT (SAFE) ===== */
-const customerController = require("../controllers/customerController");
-
-
 /* =========================
-   CUSTOMER ROUTES
+   CONTROLLER IMPORT
 ========================= */
 
-// 📲 Customer scans QR → submit details
-router.post("/capture", customerController.captureCustomer);
+const customerController = require("../controllers/customerController");
 
-// 📊 Shop dashboard → fetch customer details
-router.get("/customer/:shopId/:phone", customerController.getCustomer);
+/* =========================
+   SAFETY CHECK (DEBUG)
+========================= */
 
+// 🔥 This prevents server crash + helps debugging
+if (
+  !customerController ||
+  typeof customerController.captureCustomer !== "function" ||
+  typeof customerController.getCustomer !== "function"
+) {
+  console.error("❌ CustomerController not loaded correctly:", customerController);
+  throw new Error("CustomerController functions are undefined");
+}
+
+/* =========================
+   ROUTES
+========================= */
+
+/**
+ * @route   POST /customer/capture
+ * @desc    Capture customer from QR scan
+ */
+router.post("/customer/capture", customerController.captureCustomer);
+
+/**
+ * @route   GET /customer/:phone/:shopId
+ * @desc    Get customer details for a shop
+ */
+router.get("/customer/:phone/:shopId", customerController.getCustomer);
 
 /* =========================
    EXPORT

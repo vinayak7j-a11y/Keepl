@@ -8,7 +8,7 @@ const authMiddleware = require("../middleware/authMiddleware");
    POSTER ROUTES
 ========================= */
 
-// Download shop QR poster
-router.get("/poster/:shopId", authMiddleware, posterController.downloadPoster);
+// 📄 Download QR Poster
+router.get("/:shopId", authMiddleware, posterController.downloadPoster);
 
 module.exports = router;

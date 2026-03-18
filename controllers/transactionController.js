@@ -7,19 +7,18 @@ const Transaction = require("../models/Transaction");
 const Notification = require("../models/Notification");
 const CustomerQueue = require("../models/CustomerQueue");
 
-
 /* =========================
-   ADD TRANSACTION (FINAL FIXED)
+   ADD TRANSACTION
 ========================= */
 
-exports.addTransaction = async (req, res) => {
+const addTransaction = async (req, res) => {
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
 
-    const { phone, shopId, billAmount } = req.body;
+    const { phone, shopId, billAmount, queueId } = req.body;
     const amount = Number(billAmount);
 
     if (!phone || !shopId) {
@@ -38,7 +37,7 @@ exports.addTransaction = async (req, res) => {
       throw new Error("Shop not found");
     }
 
-    /* ===== USER (UPSERT) ===== */
+    /* ===== USER ===== */
 
     let user = await User.findOneAndUpdate(
       { phone },
@@ -46,25 +45,19 @@ exports.addTransaction = async (req, res) => {
       { new: true, upsert: true, session }
     );
 
-    /* ===== BETTER IDEMPOTENCY KEY ===== */
-
-    const transactionKey = `${phone}-${shop._id}-${amount}-${Date.now()}`;
-
-    /* ===== CALCULATE POINTS ===== */
+    /* ===== POINTS ===== */
 
     const pointsEarned = shop.calculatePoints
       ? shop.calculatePoints(amount)
       : Math.floor((amount / 100) * (shop.rewardRate || 10));
 
-    /* ===== WALLET (UPSERT) ===== */
+    /* ===== WALLET ===== */
 
     let wallet = await Wallet.findOneAndUpdate(
       { userId: user._id, shopId: shop._id },
       { $setOnInsert: { points: 0, totalEarned: 0 } },
       { new: true, upsert: true, session }
     );
-
-    /* ===== UPDATE WALLET ===== */
 
     wallet.points += pointsEarned;
     wallet.totalEarned += pointsEarned;
@@ -81,11 +74,10 @@ exports.addTransaction = async (req, res) => {
       billAmount: amount,
       points: pointsEarned,
       phone,
-      source: "manual",
-      uniqueKey: transactionKey
+      source: "manual"
     }], { session });
 
-    /* ===== UPDATE USER ANALYTICS ===== */
+    /* ===== USER UPDATE ===== */
 
     user.totalVisits = (user.totalVisits || 0) + 1;
     user.totalSpent = (user.totalSpent || 0) + amount;
@@ -94,7 +86,7 @@ exports.addTransaction = async (req, res) => {
 
     await user.save({ session });
 
-    /* ===== UPDATE SHOP ANALYTICS ===== */
+    /* ===== SHOP UPDATE ===== */
 
     shop.totalTransactions = (shop.totalTransactions || 0) + 1;
     shop.totalRevenue = (shop.totalRevenue || 0) + amount;
@@ -102,24 +94,17 @@ exports.addTransaction = async (req, res) => {
 
     await shop.save({ session });
 
-    /* ===== QUEUE HANDLING (CRITICAL FIX) ===== */
+    /* ===== QUEUE FIX (IMPORTANT) ===== */
 
-    await CustomerQueue.updateMany(
-      {
-        phone,
-        shopId: shop._id,
-        status: { $in: ["waiting", "processing"] }
-      },
-      {
-        $set: {
-          status: "completed",
-          expiresAt: new Date() // instantly expire
-        }
-      },
-      { session }
-    );
+    if (queueId) {
+      await CustomerQueue.findByIdAndUpdate(
+        queueId,
+        { status: "completed" },
+        { session }
+      );
+    }
 
-    /* ===== CREATE NOTIFICATION ===== */
+    /* ===== NOTIFICATION ===== */
 
     await Notification.create([{
       userId: user._id,
@@ -154,7 +139,6 @@ exports.addTransaction = async (req, res) => {
     });
 
   }
-
 };
 
 
@@ -162,10 +146,8 @@ exports.addTransaction = async (req, res) => {
    GET SHOP TRANSACTIONS
 ========================= */
 
-exports.getTransactions = async (req, res) => {
-
+const getTransactions = async (req, res) => {
   try {
-
     const { shopId } = req.params;
 
     const shop = await Shop.findOne({ shopId });
@@ -183,13 +165,9 @@ exports.getTransactions = async (req, res) => {
     res.json(transactions);
 
   } catch (error) {
-
     console.error("Get transactions error:", error);
-
     res.status(500).json({ message: "Server error" });
-
   }
-
 };
 
 
@@ -197,10 +175,8 @@ exports.getTransactions = async (req, res) => {
    GET CUSTOMER TRANSACTIONS
 ========================= */
 
-exports.getCustomerTransactions = async (req, res) => {
-
+const getCustomerTransactions = async (req, res) => {
   try {
-
     const { phone } = req.params;
 
     const user = await User.findOne({ phone });
@@ -220,13 +196,20 @@ exports.getCustomerTransactions = async (req, res) => {
     res.json(transactions);
 
   } catch (error) {
-
     console.error("Customer transactions error:", error);
-
     res.status(500).json({
       message: "Server error"
     });
-
   }
+};
 
+
+/* =========================
+   EXPORT (FINAL)
+========================= */
+
+module.exports = {
+  addTransaction,
+  getTransactions,
+  getCustomerTransactions
 };

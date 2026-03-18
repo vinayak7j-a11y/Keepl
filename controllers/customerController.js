@@ -3,15 +3,12 @@ const Wallet = require("../models/Wallet");
 const Shop = require("../models/Shop");
 const CustomerQueue = require("../models/CustomerQueue");
 
-
 /* =========================
-   CAPTURE CUSTOMER (FINAL)
+   CAPTURE CUSTOMER
 ========================= */
 
-exports.captureCustomer = async (req, res) => {
-
+const captureCustomer = async (req, res) => {
   try {
-
     let { name, phone, shopId } = req.body;
 
     name = name?.trim();
@@ -33,37 +30,37 @@ exports.captureCustomer = async (req, res) => {
       return res.status(404).send("Shop not found");
     }
 
-    /* ===== USER (UPSERT) ===== */
+    /* ===== USER UPSERT ===== */
 
     const user = await User.findOneAndUpdate(
       { phone },
-      { $setOnInsert: { name, phone } },
+      { $set: { name, phone } },
       { new: true, upsert: true }
     );
 
-    /* ===== WALLET (UPSERT) ===== */
+    /* ===== WALLET UPSERT ===== */
 
     await Wallet.findOneAndUpdate(
       { userId: user._id, shopId: shop._id },
       { $setOnInsert: { points: 0, totalEarned: 0 } },
-      { new: true, upsert: true }
+      { upsert: true }
     );
 
-    /* ===== QUEUE (ATOMIC UPSERT) ===== */
+    /* ===== QUEUE ===== */
 
-    await CustomerQueue.findOneAndUpdate(
+    const queueEntry = await CustomerQueue.findOneAndUpdate(
       {
         phone,
         shopId: shop._id,
         status: { $in: ["waiting", "processing"] }
       },
       {
-        $setOnInsert: {
+        $set: {
           name,
           phone,
           shopId: shop._id,
           status: "waiting",
-          expiresAt: new Date(Date.now() + 1000 * 60 * 10) // 10 min TTL
+          expiresAt: new Date(Date.now() + 1000 * 60 * 10)
         }
       },
       {
@@ -72,82 +69,27 @@ exports.captureCustomer = async (req, res) => {
       }
     );
 
-    /* ===== SAFE OUTPUT ===== */
+    console.log("Queue Entry:", queueEntry._id);
 
-    const safeName = name.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const safeShop = shop.name.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-
-    /* ===== RESPONSE PAGE ===== */
-
-    res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>${safeShop} Rewards</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <style>
-      body{
-        font-family:Arial;
-        background:#f5f6fa;
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        height:100vh;
-        margin:0;
-      }
-      .card{
-        background:white;
-        padding:30px;
-        border-radius:10px;
-        box-shadow:0 5px 15px rgba(0,0,0,0.1);
-        width:90%;
-        max-width:350px;
-        text-align:center;
-      }
-      h1{
-        color:#2ecc71;
-        font-size:40px;
-      }
-      </style>
-    </head>
-    <body>
-
-      <div class="card">
-
-        <h1>✓</h1>
-        <h2>${safeShop} Rewards</h2>
-
-        <p>Thanks <strong>${safeName}</strong>!</p>
-
-        <p>You are now in queue.</p>
-
-        <p>Please show this screen to the shopkeeper.</p>
-
-      </div>
-
-    </body>
-    </html>
-    `);
+    res.json({
+      success: true,
+      message: "Added to queue",
+      queueId: queueEntry._id
+    });
 
   } catch (error) {
-
     console.error("Customer capture error:", error);
-
     res.status(500).send("Something went wrong");
-
   }
-
 };
 
 
 /* =========================
-   GET CUSTOMER DETAILS (FINAL)
+   GET CUSTOMER
 ========================= */
 
-exports.getCustomer = async (req, res) => {
-
+const getCustomer = async (req, res) => {
   try {
-
     const { phone, shopId } = req.params;
 
     if (!phone || !shopId) {
@@ -155,8 +97,6 @@ exports.getCustomer = async (req, res) => {
         message: "Phone and shopId required"
       });
     }
-
-    /* ===== FIND SHOP ===== */
 
     const shop = await Shop.findOne({ shopId });
 
@@ -166,8 +106,6 @@ exports.getCustomer = async (req, res) => {
       });
     }
 
-    /* ===== FIND USER ===== */
-
     const user = await User.findOne({ phone }).lean();
 
     if (!user) {
@@ -176,14 +114,10 @@ exports.getCustomer = async (req, res) => {
       });
     }
 
-    /* ===== FIND WALLET ===== */
-
     const wallet = await Wallet.findOne({
       userId: user._id,
       shopId: shop._id
     }).lean();
-
-    /* ===== RESPONSE ===== */
 
     res.json({
       name: user.name || "Customer",
@@ -196,13 +130,21 @@ exports.getCustomer = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Get customer error:", error);
-
     res.status(500).json({
       message: "Server error"
     });
-
   }
+};
 
+
+/* =========================
+   EXPORT (IMPORTANT FIX)
+========================= */
+
+exports.captureCustomer = captureCustomer;
+exports.getCustomer = getCustomer; 
+module.exports = {
+  captureCustomer,
+  getCustomer
 };

@@ -2,100 +2,14 @@ const Transaction = require("../models/Transaction");
 const Wallet = require("../models/Wallet");
 const Shop = require("../models/Shop");
 const CustomerQueue = require("../models/CustomerQueue");
-
-
-/* =========================
-   DASHBOARD STATS API
-========================= */
-
-exports.getStats = async (req, res) => {
-
-  try {
-
-    const { shopId } = req.params;
-
-    if (!shopId) {
-      return res.status(400).json({ message: "ShopId required" });
-    }
-
-    const shop = await Shop.findOne({ shopId });
-
-    if (!shop) {
-      return res.status(404).json({ message: "Shop not found" });
-    }
-
-    /* TRANSACTIONS */
-
-    const transactions = await Transaction.find({
-      shopId: shop._id
-    });
-
-    const totalTransactions = transactions.length;
-
-    const revenue = transactions.reduce(
-      (sum, t) => sum + (t.billAmount || 0),
-      0
-    );
-
-    const totalPointsIssued = transactions.reduce(
-      (sum, t) => sum + (t.points || 0),
-      0
-    );
-
-
-    /* TOTAL CUSTOMERS */
-
-    const totalCustomers = await Wallet.countDocuments({
-      shopId: shop._id
-    });
-
-
-    /* REPEAT CUSTOMERS */
-
-    const visitMap = {};
-
-    transactions.forEach(t => {
-
-      const user = String(t.userId);
-
-      visitMap[user] = (visitMap[user] || 0) + 1;
-
-    });
-
-    const repeatCustomers = Object.values(visitMap)
-      .filter(v => v > 1).length;
-
-
-    res.json({
-      totalCustomers,
-      totalTransactions,
-      totalPointsIssued,
-      revenue,
-      repeatCustomers
-    });
-
-  } catch (error) {
-
-    console.error("Stats error:", error);
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
-  }
-
-};
-
-
+const User = require("../models/User");
 
 /* =========================
-   DASHBOARD PAGE
+   DASHBOARD PAGE (OPTIMIZED)
 ========================= */
 
-exports.getDashboard = async (req, res) => {
-
+const getDashboard = async (req, res) => {
   try {
-
     const { shopId } = req.params;
 
     if (!shopId) {
@@ -108,28 +22,73 @@ exports.getDashboard = async (req, res) => {
       return res.status(404).send("Shop not found");
     }
 
+    /* ===== QUEUE (FIXED FILTER) ===== */
 
-    /* CUSTOMER QUEUE (ONLY WAITING CUSTOMERS) */
+    const now = new Date();
 
-    const customers = await CustomerQueue.find({
+    const queue = await CustomerQueue.find({
       shopId: shop._id,
-      status: "waiting"
+      status: "waiting",
+      expiresAt: { $gt: now } // ✅ remove expired
     })
       .sort({ createdAt: 1 })
       .limit(50)
-      .select("name phone createdAt")
       .lean();
 
+    const phones = queue.map(q => q.phone);
 
-    /* TODAY STATS */
+    /* ===== BULK FETCH USERS ===== */
+
+    const users = await User.find({
+      phone: { $in: phones }
+    }).lean();
+
+    const userMap = {};
+    users.forEach(u => {
+      userMap[u.phone] = u;
+    });
+
+    /* ===== BULK FETCH WALLETS ===== */
+
+    const userIds = users.map(u => u._id);
+
+    const wallets = await Wallet.find({
+      userId: { $in: userIds },
+      shopId: shop._id
+    }).lean();
+
+    const walletMap = {};
+    wallets.forEach(w => {
+      walletMap[w.userId.toString()] = w;
+    });
+
+    /* ===== BUILD CUSTOMER DATA ===== */
+
+    const customers = queue.map(q => {
+      const user = userMap[q.phone];
+      const wallet = user
+        ? walletMap[user._id.toString()]
+        : null;
+
+      return {
+        queueId: q._id, // ✅ IMPORTANT (needed later)
+        name: q.name,
+        phone: q.phone,
+        visits: user?.totalVisits || 0,
+        totalSpent: user?.totalSpent || 0,
+        points: wallet?.points || 0
+      };
+    });
+
+    /* ===== TODAY STATS ===== */
 
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
 
     const todayTransactions = await Transaction.find({
       shopId: shop._id,
       createdAt: { $gte: today }
-    });
+    }).lean();
 
     const customersToday = todayTransactions.length;
 
@@ -137,7 +96,6 @@ exports.getDashboard = async (req, res) => {
       (sum, t) => sum + (t.points || 0),
       0
     );
-
 
     res.render("dashboard", {
       shop,
@@ -147,96 +105,10 @@ exports.getDashboard = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Dashboard error:", error);
-
     res.status(500).send("Dashboard error");
-
   }
-
-};
-
-
-
-/* =========================
-   CUSTOMER ANALYTICS
-========================= */
-
-exports.getCustomerAnalytics = async (req, res) => {
-
-  try {
-
-    const { shopId } = req.params;
-
-    const shop = await Shop.findOne({ shopId });
-
-    if (!shop) {
-      return res.status(404).json({
-        message: "Shop not found"
-      });
-    }
-
-    const totalCustomers = await Wallet.countDocuments({
-      shopId: shop._id
-    });
-
-    res.json({
-      totalCustomers
-    });
-
-  } catch (error) {
-
-    console.error("Customer analytics error:", error);
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
-  }
-
-};
-
-
-
-/* =========================
-   REVENUE ANALYTICS
-========================= */
-
-exports.getRevenueAnalytics = async (req, res) => {
-
-  try {
-
-    const { shopId } = req.params;
-
-    const shop = await Shop.findOne({ shopId });
-
-    if (!shop) {
-      return res.status(404).json({
-        message: "Shop not found"
-      });
-    }
-
-    const transactions = await Transaction.find({
-      shopId: shop._id
-    });
-
-    const revenue = transactions.reduce(
-      (sum, t) => sum + (t.billAmount || 0),
-      0
-    );
-
-    res.json({
-      revenue
-    });
-
-  } catch (error) {
-
-    console.error("Revenue analytics error:", error);
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
-  }
-
+}; 
+module.exports = {
+  getDashboard
 };

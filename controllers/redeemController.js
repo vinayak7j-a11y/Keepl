@@ -4,22 +4,22 @@ const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 
 /* =========================
-   REDEEM POINTS
+   REDEEM POINTS (SAFE)
 ========================= */
 
 exports.redeemPoints = async (req, res) => {
-
   try {
+    let { phone, shopId, points } = req.body;
 
-    const { phone, shopId, points } = req.body;
+    points = Number(points);
 
-    if (!phone || !shopId || !points) {
+    if (!phone || !shopId || !points || points <= 0) {
       return res.status(400).json({
-        message: "Phone, shopId and points required"
+        message: "Valid phone, shopId and points required"
       });
     }
 
-    const shop = await Shop.findOne({ shopId });
+    const shop = await Shop.findOne({ shopId }).lean();
 
     if (!shop) {
       return res.status(404).json({
@@ -27,7 +27,7 @@ exports.redeemPoints = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ phone });
+    const user = await User.findOne({ phone }).lean();
 
     if (!user) {
       return res.status(404).json({
@@ -35,20 +35,29 @@ exports.redeemPoints = async (req, res) => {
       });
     }
 
-    const wallet = await Wallet.findOne({
-      userId: user._id,
-      shopId: shop._id
-    });
+    /* ===== ATOMIC WALLET UPDATE ===== */
 
-    if (!wallet || wallet.points < points) {
+    const wallet = await Wallet.findOneAndUpdate(
+      {
+        userId: user._id,
+        shopId: shop._id,
+        points: { $gte: points } // ✅ prevents negative
+      },
+      {
+        $inc: { points: -points }
+      },
+      {
+        new: true
+      }
+    );
+
+    if (!wallet) {
       return res.status(400).json({
         message: "Not enough points"
       });
     }
 
-    wallet.points -= points;
-
-    await wallet.save();
+    /* ===== CREATE TRANSACTION ===== */
 
     await Transaction.create({
       userId: user._id,
@@ -63,15 +72,11 @@ exports.redeemPoints = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Redeem error:", error);
-
     res.status(500).json({
       message: "Server error"
     });
-
   }
-
 };
 
 
@@ -80,12 +85,10 @@ exports.redeemPoints = async (req, res) => {
 ========================= */
 
 exports.getRedemptions = async (req, res) => {
-
   try {
-
     const { shopId } = req.params;
 
-    const shop = await Shop.findOne({ shopId });
+    const shop = await Shop.findOne({ shopId }).lean();
 
     if (!shop) {
       return res.status(404).json({
@@ -97,21 +100,18 @@ exports.getRedemptions = async (req, res) => {
       shopId: shop._id,
       type: "redeem"
     })
-    .sort({ createdAt: -1 })
-    .limit(100);
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
 
     res.json(redemptions);
 
   } catch (error) {
-
     console.error("Redemption history error:", error);
-
     res.status(500).json({
       message: "Server error"
     });
-
   }
-
 };
 
 
@@ -120,12 +120,10 @@ exports.getRedemptions = async (req, res) => {
 ========================= */
 
 exports.getCustomerRedemptions = async (req, res) => {
-
   try {
-
     const { phone } = req.params;
 
-    const user = await User.findOne({ phone });
+    const user = await User.findOne({ phone }).lean();
 
     if (!user) {
       return res.status(404).json({
@@ -137,19 +135,16 @@ exports.getCustomerRedemptions = async (req, res) => {
       userId: user._id,
       type: "redeem"
     })
-    .sort({ createdAt: -1 })
-    .limit(100);
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
 
     res.json(redemptions);
 
   } catch (error) {
-
     console.error("Customer redemption error:", error);
-
     res.status(500).json({
       message: "Server error"
     });
-
   }
-
 };

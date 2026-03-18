@@ -1,72 +1,21 @@
 const express = require("express");
 const router = express.Router();
 
+const customerController = require("../controllers/customerController");
 const Shop = require("../models/Shop");
-const CustomerQueue = require("../models/CustomerQueue");
-
 
 /* =========================
    CAPTURE CUSTOMER
 ========================= */
 
-router.post("/capture", async (req, res) => {
-
-  try {
-
-    const { name, phone, shopId } = req.body;
-
-    if (!name || !phone || !shopId) {
-      return res.status(400).send("Missing details");
-    }
-
-    const shop = await Shop.findOne({ shopId });
-
-    if (!shop) {
-      return res.status(404).send("Shop not found");
-    }
-
-    /* CHECK IF ALREADY WAITING */
-
-    const existing = await CustomerQueue.findOne({
-      phone,
-      shopId: shop._id,
-      status: "waiting"
-    });
-
-    if (existing) {
-      return res.redirect(`/s/${shopId}?already=true`);
-    }
-
-    /* CREATE QUEUE ENTRY */
-
-    await CustomerQueue.create({
-      name,
-      phone,
-      shopId: shop._id,
-      status: "waiting"
-    });
-
-    res.redirect(`/s/${shopId}?joined=true`);
-
-  } catch (error) {
-
-    console.error("Capture error:", error);
-
-    res.status(500).send("Server error");
-
-  }
-
-});
-
+router.post("/capture", customerController.captureCustomer);
 
 /* =========================
    CUSTOMER SCAN PAGE
 ========================= */
 
 router.get("/s/:shopId", async (req, res) => {
-
   try {
-
     const { shopId } = req.params;
 
     if (!shopId) {
@@ -94,7 +43,6 @@ router.get("/s/:shopId", async (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-
 body{
 font-family:Arial;
 background:#f5f5f5;
@@ -145,7 +93,6 @@ margin-top:15px;
 font-size:12px;
 color:#888;
 }
-
 </style>
 
 </head>
@@ -186,27 +133,20 @@ Powered by Keepl
 </div>
 
 <script>
-
 function handleSubmit(){
-const btn = document.getElementById("submitBtn")
-btn.disabled = true
-btn.innerText = "Submitting..."
+  const btn = document.getElementById("submitBtn")
+  btn.disabled = true
+  btn.innerText = "Submitting..."
 }
-
 </script>
 
 </body>
 </html>
 `);
-
   } catch (error) {
-
     console.error("Scan page error:", error);
-
     res.status(500).send("Something went wrong");
-
   }
-
 });
 
 module.exports = router;

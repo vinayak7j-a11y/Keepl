@@ -5,28 +5,16 @@ const queueController = require("../controllers/queueController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 /* =========================
-   QUEUE ROUTES
+   QUEUE ROUTES (FIXED)
 ========================= */
 
-// Get queue for shop
-router.get(
-  "/queue/:shopId",
-  authMiddleware,
-  queueController.getQueue
-);
+// 📋 Get queue
+router.get("/:shopId", authMiddleware, queueController.getQueue);
 
-// Remove single customer from queue
-router.delete(
-  "/queue/:id",
-  authMiddleware,
-  queueController.removeFromQueue
-);
+// ✅ Mark queue item as completed (IMPORTANT)
+router.patch("/:id/complete", authMiddleware, queueController.completeQueue);
 
-// Clear completed queue
-router.delete(
-  "/queue/clear/:shopId",
-  authMiddleware,
-  queueController.clearQueue
-);
+// 🧹 Clear completed queue
+router.delete("/clear/:shopId", authMiddleware, queueController.clearQueue);
 
 module.exports = router;

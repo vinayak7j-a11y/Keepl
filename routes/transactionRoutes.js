@@ -1,36 +1,41 @@
 const express = require("express");
 const router = express.Router();
 
+/* =========================
+   CONTROLLER IMPORT
+========================= */
+
 const transactionController = require("../controllers/transactionController");
-const authMiddleware = require("../middleware/authMiddleware");
 
 /* =========================
-   ADD TRANSACTION (ADD POINTS)
+   SAFETY CHECK
 ========================= */
 
-router.post(
-  "/add-transaction",
-  authMiddleware,
-  transactionController.addTransaction
-);
+if (
+  !transactionController ||
+  typeof transactionController.addTransaction !== "function" ||
+  typeof transactionController.getTransactions !== "function" ||
+  typeof transactionController.getCustomerTransactions !== "function"
+) {
+  console.error("❌ TransactionController error:", transactionController);
+  throw new Error("TransactionController functions are undefined");
+}
 
 /* =========================
-   SHOP TRANSACTION HISTORY
+   ROUTES
 ========================= */
 
-router.get(
-  "/shop-transactions/:shopId",
-  authMiddleware,
-  transactionController.getTransactions
-);
+// Add transaction (earn points)
+router.post("/transaction", transactionController.addTransaction);
+
+// Get shop transactions
+router.get("/transactions/:shopId", transactionController.getTransactions);
+
+// Get customer transactions
+router.get("/transactions/customer/:phone", transactionController.getCustomerTransactions);
 
 /* =========================
-   CUSTOMER TRANSACTION HISTORY
+   EXPORT
 ========================= */
-
-router.get(
-  "/customer-transactions/:phone",
-  transactionController.getCustomerTransactions
-);
 
 module.exports = router;

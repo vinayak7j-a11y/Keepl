@@ -119,7 +119,7 @@ input{
 padding:8px;
 border-radius:6px;
 border:1px solid #ddd;
-width:120px;
+width:110px;
 }
 
 .success{
@@ -182,16 +182,7 @@ body{ padding:15px; }
 <div class="card">
 <h3>Customers Waiting</h3>
 
-<table id="queueTable">
-<tr>
-<th>Name</th>
-<th>Phone</th>
-<th>Visits</th>
-<th>Total Spent</th>
-<th>Points</th>
-<th>Action</th>
-</tr>
-</table>
+<table id="queueTable"></table>
 </div>
 
 <div class="card qrSection">
@@ -223,7 +214,7 @@ LOGOUT
 ========================= */
 
 function logout(){
-  if(confirm("Are you sure you want to logout?")){
+  if(confirm("Logout?")){
     localStorage.clear();
     window.location.href="/";
   }
@@ -261,14 +252,13 @@ async function fetchQueue(){
     });
 
     if(res.status === 401){
-      alert("Session expired. Please login again.");
       localStorage.clear();
       window.location.href = "/";
       return;
     }
 
     if(!res.ok){
-      throw new Error("Failed to fetch queue");
+      throw new Error("Failed");
     }
 
     const data = await res.json();
@@ -301,14 +291,14 @@ async function fetchQueue(){
 
       rows += `
       <tr>
-        <td>${safe(customer.name || "Customer")}</td>
+        <td>${safe(customer.name)}</td>
         <td>${customer.phone}</td>
-        <td>${customer.visits || 0}</td>
-        <td>₹${customer.totalSpent || 0}</td>
-        <td>${customer.points || 0}</td>
+        <td>${customer.visits}</td>
+        <td>₹${customer.totalSpent}</td>
+        <td>${customer.points}</td>
         <td>
-          <input type="number" id="amount-${customer.phone}" placeholder="Bill Amount">
-          <button onclick="givePoints('${customer.phone}', this)">Give Points</button>
+          <input type="number" id="amount-${customer.phone}" placeholder="Amount">
+          <button onclick="givePoints('${customer.phone}', '${customer.queueId}', this)">Give</button>
           <div id="msg-${customer.phone}"></div>
         </td>
       </tr>`;
@@ -326,70 +316,56 @@ async function fetchQueue(){
     ${rows}`;
 
   }catch(err){
-    console.log("Queue error:", err);
-    document.getElementById("queueTable").innerHTML = `
-    <tr><td colspan="6" class="error">Error loading queue</td></tr>`;
+    console.log(err);
   }finally{
     isFetching = false;
   }
 }
 
 /* =========================
-ADD POINTS
+ADD POINTS (FIXED)
 ========================= */
 
-async function givePoints(phone,btn){
+async function givePoints(phone, queueId, btn){
 
   if(btn.disabled) return;
 
-  const amountInput = document.getElementById(`amount-${phone}`);
-  const billAmount = amountInput.value;
-  const msgBox = document.getElementById(`msg-${phone}`);
+  const amount = document.getElementById(`amount-${phone}`).value;
+  const msg = document.getElementById(`msg-${phone}`);
 
-  if(!billAmount){
-    msgBox.innerHTML="<span class='error'>Enter bill amount</span>";
+  if(!amount){
+    msg.innerHTML="<span class='error'>Enter amount</span>";
     return;
   }
 
   btn.disabled = true;
-  btn.innerText = "Processing...";
+  btn.innerText = "...";
 
   const shopId = "<%= shop.shopId %>";
 
   try{
 
-    const res = await fetch("/api/add-transaction",{
+    const res = await fetch("/api/transactions",{
       method:"POST",
       headers:{
         "Content-Type":"application/json",
         "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ phone, shopId, billAmount })
+      body: JSON.stringify({ phone, shopId, billAmount: amount, queueId })
     });
-
-    if(res.status === 401){
-      alert("Session expired. Please login again.");
-      localStorage.clear();
-      window.location.href = "/";
-      return;
-    }
-
-    if(!res.ok){
-      throw new Error("Transaction failed");
-    }
 
     const data = await res.json();
 
-    msgBox.innerHTML=`<span class="success">+${data.pointsEarned} points added</span>`;
+    msg.innerHTML=`<span class="success">+${data.pointsEarned}</span>`;
 
-    setTimeout(fetchQueue, 500);
+    setTimeout(fetchQueue,500);
 
-  }catch(err){
-    msgBox.innerHTML="<span class='error'>Error adding points</span>";
+  }catch{
+    msg.innerHTML="<span class='error'>Error</span>";
   }
 
   btn.disabled = false;
-  btn.innerText = "Give Points";
+  btn.innerText = "Give";
 }
 
 /* =========================
@@ -398,11 +374,11 @@ AUTO REFRESH
 
 fetchQueue();
 
-setInterval(() => {
+setInterval(()=>{
   if(!document.hidden){
     fetchQueue();
   }
-}, 3000);
+},3000);
 
 /* =========================
 PWA INSTALL
@@ -420,7 +396,7 @@ window.addEventListener("beforeinstallprompt",(e)=>{
   btn.onclick = async ()=>{
     deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
-    if(choice.outcome === "accepted"){
+    if(choice.outcome==="accepted"){
       btn.style.display="none";
     }
   };
@@ -431,9 +407,7 @@ SERVICE WORKER
 ========================= */
 
 if("serviceWorker" in navigator){
-  navigator.serviceWorker
-    .register("/sw.js")
-    .then(()=>console.log("Service Worker registered"));
+  navigator.serviceWorker.register("/sw.js");
 }
 
 </script>

@@ -1,13 +1,15 @@
 const express = require("express");
 const router = express.Router();
 
-const { getDashboard, getStats } = require("../controllers/dashboardController");
-const authMiddleware = require("../middleware/authMiddleware");
+const dashboardController = require("../controllers/dashboardController");
 
-/* Dashboard page (NO auth middleware) */
-router.get("/dashboard/:shopId", getDashboard);
+/* SAFETY CHECK */
+if (!dashboardController || typeof dashboardController.getDashboard !== "function") {
+  console.error("❌ DashboardController error:", dashboardController);
+  throw new Error("DashboardController not loaded properly");
+}
 
-/* Stats API (protected) */
-router.get("/api/dashboard/:shopId", authMiddleware, getStats);
+/* ROUTE */
+router.get("/dashboard/:shopId", dashboardController.getDashboard);
 
 module.exports = router;
