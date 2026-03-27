@@ -244,7 +244,7 @@ const choice = await deferredPrompt.userChoice;
 if(choice.outcome === "accepted"){
 installBtn.style.display="none";
 }
-// navigator.serviceWorker.register("/sw.js")
+
 };
 
 });
@@ -253,27 +253,9 @@ installBtn.style.display="none";
 
 <script>
 
-/* =========================
-   SERVICE WORKER
-========================= */
 
-if("serviceWorker" in navigator){
-
-navigator.serviceWorker.register("/sw.js")
-.then(()=>{
-
-console.log("Service Worker Registered")
-
-})
-.catch(err=>{
-
-console.log("SW error",err)
-
-})
-
-}
 
 </script>
 
 </body>
-</html>
+</html> 

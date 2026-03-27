@@ -67,7 +67,8 @@ app.get("/", (req, res) => {
    API ROUTES (MUST BE FIRST)
 ========================= */
 
-app.use("/api/shops", shopRoutes);
+app.use("/api/shops", shopRoutes); 
+console.log("🔥 /api/shops mounted");
 app.use("/api/customers", customerRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/redeem", redeemRoutes);
