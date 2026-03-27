@@ -63,25 +63,7 @@ app.get("/", (req, res) => {
 });
 
 /* =========================
-   PAGE ROUTES (UI)
-========================= */
-
-// 🏪 Shop pages 
-app.use("/api/shops", shopRoutes);
-app.use("/shop", shopPageRoutes);
-
-// 📲 Scan page + capture flow
-app.use("/", scanRoutes); 
-// IMPORTANT: this keeps /s/:shopId working cleanly
-
-// 📊 Dashboard
-app.use("/dashboard", dashboardRoutes);
-
-// 📄 Poster
-app.use("/poster", posterRoutes);
-
-/* =========================
-   API ROUTES (STRICT)
+   API ROUTES (MUST BE FIRST)
 ========================= */
 
 app.use("/api/shops", shopRoutes);
@@ -89,6 +71,20 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/redeem", redeemRoutes);
 app.use("/api/queue", queueRoutes);
+
+/* =========================
+   PAGE ROUTES (UI)
+========================= */
+
+app.use("/shop", shopPageRoutes);
+app.use("/dashboard", dashboardRoutes);
+app.use("/poster", posterRoutes);
+
+/* =========================
+   SCAN ROUTES (MUST BE LAST)
+========================= */
+
+app.use("/", scanRoutes);
 
 /* =========================
    HEALTH CHECK
