@@ -11,7 +11,8 @@ const app = express();
    ROUTE IMPORTS
 ========================= */
 
-const shopRoutes = require("./routes/shopRoutes");
+const shopRoutes = require("./routes/shopRoutes"); 
+console.log("🔥 server imported shopRoutes");
 const scanRoutes = require("./routes/scanRoutes");
 const customerRoutes = require("./routes/customerRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");

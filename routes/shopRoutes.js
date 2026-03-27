@@ -1,3 +1,4 @@
+console.log("🔥🔥🔥 SHOP ROUTES LOADED");
 const express = require("express");
 const router = express.Router();
 
