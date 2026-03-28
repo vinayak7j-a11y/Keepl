@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 
 <meta charset="UTF-8">
@@ -15,67 +14,42 @@
 <meta name="theme-color" content="#2f80ed">
 
 <style>
-
 .subtitle{
-text-align:center;
-color:#666;
-font-size:14px;
-margin-bottom:20px;
+  text-align:center;
+  color:#666;
+  font-size:14px;
+  margin-bottom:20px;
 }
 
 .error{
-color:#e74c3c;
-font-size:14px;
-text-align:center;
-margin-top:10px;
+  color:#e74c3c;
+  font-size:14px;
+  text-align:center;
+  margin-top:10px;
 }
 
 .register{
-text-align:center;
-margin-top:15px;
-font-size:14px;
-}
-
-.register a{
-color:#2f80ed;
-text-decoration:none;
-}
-
-.register a:hover{
-text-decoration:underline;
+  text-align:center;
+  margin-top:15px;
+  font-size:14px;
 }
 
 .installBtn{
-margin-top:10px;
-width:100%;
-background:#27ae60;
+  margin-top:10px;
+  width:100%;
+  background:#27ae60;
 }
-
-.installBtn:hover{
-background:#1e8449;
-}
-
 </style>
 
 <script>
-
-/* =========================
-   AUTO DASHBOARD LOGIN
-========================= */
-
 document.addEventListener("DOMContentLoaded", () => {
+  const token = localStorage.getItem("token");
+  const shopId = localStorage.getItem("shopId");
 
-const token = localStorage.getItem("token")
-const shopId = localStorage.getItem("shopId")
-
-if(token && shopId){
-
-window.location.href="/dashboard/"+shopId
-
-}
-
-})
-
+  if(token && shopId){
+    window.location.href="/dashboard/"+shopId;
+  }
+});
 </script>
 
 </head>
@@ -90,45 +64,32 @@ window.location.href="/dashboard/"+shopId
 Access your shop rewards dashboard
 </p>
 
-<input 
-id="phone"
-type="tel"
-placeholder="Shop Owner Phone Number"
-required
-pattern="[0-9]{10}"
-inputmode="numeric"
-autocomplete="tel"
-/>
-
-<input 
-id="password"
-type="password"
-placeholder="Password"
-required
-autocomplete="current-password"
-/>
-
+<!-- ✅ CLEAN FORM -->
 <form id="loginForm">
 
-<input id="phone" ... />
-<input id="password" ... />
+  <input 
+    id="phone"
+    type="tel"
+    placeholder="Shop Owner Phone Number"
+    required
+  />
 
-<button type="submit">Login</button>
+  <input 
+    id="password"
+    type="password"
+    placeholder="Password"
+    required
+  />
+
+  <button id="loginBtn" type="submit">Login</button>
 
 </form>
-Login
-</button>
-
-<!-- INSTALL APP BUTTON -->
-<button id="installBtn" class="installBtn" style="display:none;">
-Install Keepl App
-</button>
 
 <p id="errorMsg" class="error"></p>
 
-<p class="tagline">
-Customer rewards system for local shops
-</p>
+<button id="installBtn" class="installBtn" style="display:none;">
+Install Keepl App
+</button>
 
 <p class="register">
 Don't have a shop account?
@@ -137,135 +98,79 @@ Don't have a shop account?
 
 </div>
 
+<!-- ✅ LOGIN SCRIPT -->
 <script>
+const BASE_URL = "https://keepl.onrender.com";
 
-/* =========================
-   LOGIN FUNCTION
-========================= */
+const form = document.getElementById("loginForm");
 
-async function login(){
-
-const phone = document.getElementById("phone").value.trim()
-const password = document.getElementById("password").value.trim()
-
-const errorMsg = document.getElementById("errorMsg")
-const btn = document.getElementById("loginBtn")
-document.getElementById("loginForm").addEventListener("submit", async (e) => {
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  await login();
+
+  const phone = document.getElementById("phone").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const errorMsg = document.getElementById("errorMsg");
+  const btn = document.getElementById("loginBtn");
+
+  errorMsg.innerText = "";
+
+  if (!phone || !password) {
+    errorMsg.innerText = "Please enter phone and password";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "Logging in...";
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/shops/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ phone, password })
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.shopId) {
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("shopId", data.shopId);
+
+      window.location.href = "/dashboard/" + data.shopId;
+    } else {
+      errorMsg.innerText = data.message || "Login failed";
+    }
+
+  } catch (err) {
+    errorMsg.innerText = "Server error. Please try again.";
+  }
+
+  btn.disabled = false;
+  btn.innerText = "Login";
 });
-errorMsg.innerText=""
-
-/* validation */
-
-if(!phone || !password){
-
-errorMsg.innerText="Please enter phone and password"
-return
-
-}
-
-if(phone.length !== 10){
-
-errorMsg.innerText="Enter valid phone number"
-return
-
-}
-
-btn.disabled=true
-btn.innerText="Logging in..."
-
-try{
-
-const res = await fetch("/api/shops/login",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body: JSON.stringify({
-phone,
-password
-})
-
-})
-
-if(!res.ok){
-throw new Error("Login failed")
-}
-
-const data = await res.json()
-
-if(data.shopId){
-
-localStorage.setItem("token",data.token)
-localStorage.setItem("shopId",data.shopId)
-localStorage.setItem("qrCode",data.qrCode || "")
-
-/* redirect */
-
-window.location.href="/dashboard/"+data.shopId
-
-}else{
-
-errorMsg.innerText=data.message || "Login failed"
-
-}
-
-}catch(err){
-
-errorMsg.innerText="Server error. Please try again."
-
-}
-
-btn.disabled=false
-btn.innerText="Login"
-
-}
-
 </script>
 
+<!-- PWA -->
 <script>
-
-/* =========================
-   INSTALL APP (PWA)
-========================= */
-
 let deferredPrompt;
 
 window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
 
-e.preventDefault();
+  const btn = document.getElementById("installBtn");
+  btn.style.display="block";
 
-deferredPrompt = e;
-
-const installBtn = document.getElementById("installBtn");
-
-installBtn.style.display="block";
-
-installBtn.onclick = async () => {
-
-deferredPrompt.prompt();
-
-const choice = await deferredPrompt.userChoice;
-
-if(choice.outcome === "accepted"){
-installBtn.style.display="none";
-}
-
-};
-
+  btn.onclick = async () => {
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    if(choice.outcome==="accepted"){
+      btn.style.display="none";
+    }
+  };
 });
-
-</script>
-
-<script>
-
-
-
 </script>
 
 </body>
-</html> 
+</html>
