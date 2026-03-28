@@ -108,7 +108,14 @@ required
 autocomplete="current-password"
 />
 
-<button id="loginBtn" onclick="login()">
+<form id="loginForm">
+
+<input id="phone" ... />
+<input id="password" ... />
+
+<button type="submit">Login</button>
+
+</form>
 Login
 </button>
 
@@ -143,7 +150,10 @@ const password = document.getElementById("password").value.trim()
 
 const errorMsg = document.getElementById("errorMsg")
 const btn = document.getElementById("loginBtn")
-
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await login();
+});
 errorMsg.innerText=""
 
 /* validation */

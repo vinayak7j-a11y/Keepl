@@ -1,3 +1,4 @@
+console.log("🚀 SERVER VERSION: V2 FIXED ROUTING");
 require("dotenv").config();
 
 const express = require("express");
@@ -86,7 +87,7 @@ app.use("/poster", posterRoutes);
    SCAN ROUTES (MUST BE LAST)
 ========================= */
 
-app.use("/", scanRoutes);
+app.use("/scan", scanRoutes);
 
 /* =========================
    HEALTH CHECK
