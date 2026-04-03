@@ -5,6 +5,7 @@ const Shop = require("../models/Shop");
 /* =========================
    REGISTER SHOP
 ========================= */
+
 exports.getShopProfile = async (req, res) => {
   res.json({ message: "Profile coming soon" });
 };
@@ -12,11 +13,15 @@ exports.getShopProfile = async (req, res) => {
 exports.updateShop = async (req, res) => {
   res.json({ message: "Update coming soon" });
 };
+
 exports.registerShop = async (req, res) => {
   try {
-    const { name, phone, password } = req.body;
 
-    if (!name || !phone || !password) {
+    // ✅ FIX: added ownerName
+    const { name, ownerName, phone, password } = req.body;
+
+    // ✅ FIX: validate ownerName too
+    if (!name || !ownerName || !phone || !password) {
       return res.status(400).json({
         message: "All fields required"
       });
@@ -26,7 +31,7 @@ exports.registerShop = async (req, res) => {
 
     if (existing) {
       return res.status(400).json({
-        message: "Shop already exists"
+        message: "Shop already exists with this phone number"
       });
     }
 
@@ -34,8 +39,10 @@ exports.registerShop = async (req, res) => {
 
     const shopId = "SHOP" + Date.now();
 
+    // ✅ FIX: pass ownerName to Shop.create()
     const shop = await Shop.create({
       name,
+      ownerName,
       phone,
       password: hashedPassword,
       shopId
@@ -61,6 +68,7 @@ exports.registerShop = async (req, res) => {
 
 exports.loginShop = async (req, res) => {
   try {
+
     const { phone, password } = req.body;
 
     if (!phone || !password) {
@@ -69,7 +77,8 @@ exports.loginShop = async (req, res) => {
       });
     }
 
-    const shop = await Shop.findOne({ phone });
+    // ✅ select password explicitly since it's hidden by default
+    const shop = await Shop.findOne({ phone }).select("+password");
 
     if (!shop) {
       return res.status(404).json({
