@@ -9,7 +9,7 @@ if (!dashboardController || typeof dashboardController.getDashboard !== "functio
   throw new Error("DashboardController not loaded properly");
 }
 
-/* ROUTE */
-router.get("/dashboard/:shopId", dashboardController.getDashboard);
+/* ROUTE - ✅ fixed: removed /dashboard prefix (already set in server.js) */
+router.get("/:shopId", dashboardController.getDashboard);
 
 module.exports = router;
