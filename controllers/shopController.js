@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const QRCode = require("qrcode"); // ✅ QR generation
 const Shop = require("../models/Shop");
 
 /* =========================
@@ -17,10 +18,8 @@ exports.updateShop = async (req, res) => {
 exports.registerShop = async (req, res) => {
   try {
 
-    // ✅ FIX: added ownerName
     const { name, ownerName, phone, password } = req.body;
 
-    // ✅ FIX: validate ownerName too
     if (!name || !ownerName || !phone || !password) {
       return res.status(400).json({
         message: "All fields required"
@@ -39,13 +38,17 @@ exports.registerShop = async (req, res) => {
 
     const shopId = "SHOP" + Date.now();
 
-    // ✅ FIX: pass ownerName to Shop.create()
+    // ✅ Generate QR code pointing to the shop's scan page
+    const scanUrl = `${process.env.BASE_URL}/scan/${shopId}`;
+    const qrCode = await QRCode.toDataURL(scanUrl);
+
     const shop = await Shop.create({
       name,
       ownerName,
       phone,
       password: hashedPassword,
-      shopId
+      shopId,
+      qrCode // ✅ save QR to DB
     });
 
     res.json({
@@ -77,7 +80,6 @@ exports.loginShop = async (req, res) => {
       });
     }
 
-    // ✅ select password explicitly since it's hidden by default
     const shop = await Shop.findOne({ phone }).select("+password");
 
     if (!shop) {
@@ -104,6 +106,13 @@ exports.loginShop = async (req, res) => {
       return res.status(500).json({
         message: "Server config error"
       });
+    }
+
+    // ✅ If QR is missing (old accounts), auto-generate it on login
+    if (!shop.qrCode) {
+      const scanUrl = `${process.env.BASE_URL}/scan/${shop.shopId}`;
+      shop.qrCode = await QRCode.toDataURL(scanUrl);
+      await Shop.updateOne({ _id: shop._id }, { qrCode: shop.qrCode });
     }
 
     const token = jwt.sign(
