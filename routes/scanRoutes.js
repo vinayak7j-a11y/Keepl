@@ -8,13 +8,15 @@ const Shop = require("../models/Shop");
    CAPTURE CUSTOMER
 ========================= */
 
+// ✅ FIX: was "/capture", but mounted at /scan so this becomes /scan/capture
 router.post("/capture", customerController.captureCustomer);
 
 /* =========================
    CUSTOMER SCAN PAGE
 ========================= */
 
-router.get("/s/:shopId", async (req, res) => {
+// ✅ FIX: was "/s/:shopId" — removed the /s/ since QR points to /scan/:shopId
+router.get("/:shopId", async (req, res) => {
   try {
     const { shopId } = req.params;
 
@@ -70,6 +72,7 @@ margin-top:12px;
 border-radius:6px;
 border:1px solid #ccc;
 font-size:14px;
+box-sizing:border-box;
 }
 
 button{
@@ -105,17 +108,18 @@ color:#888;
 
 <p>Enter your details to collect points</p>
 
-<form method="POST" action="/capture" onsubmit="handleSubmit()">
+<!-- ✅ FIX: action points to /scan/capture not /capture -->
+<form method="POST" action="/scan/capture" onsubmit="handleSubmit()">
 
 <input name="name" placeholder="Your Name" required maxlength="80"/>
 
 <input
-type="tel"
-name="phone"
-placeholder="Phone Number"
-pattern="[0-9]{10}"
-inputmode="numeric"
-required
+  type="tel"
+  name="phone"
+  placeholder="Phone Number"
+  pattern="[0-9]{10}"
+  inputmode="numeric"
+  required
 />
 
 <input type="hidden" name="shopId" value="${shopId}" />
