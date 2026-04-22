@@ -210,6 +210,14 @@ if(!token || !shopIdLocal){
 }
 
 /* =========================
+STATE MANAGEMENT (NEW 🔥)
+========================= */
+
+let isFetching = false;
+let activeInputPhone = null;
+let inputCache = {}; // stores typed values
+
+/* =========================
 LOGOUT
 ========================= */
 
@@ -234,18 +242,18 @@ function safe(text){
 FETCH QUEUE
 ========================= */
 
-let isFetching = false;
-
 async function fetchQueue(){
 
   if(isFetching) return;
+  if(activeInputPhone) return; // 🔥 STOP refresh while typing
+
   isFetching = true;
 
   try{
 
     const shopId = "<%= shop.shopId %>";
-const res = await fetch(`${BASE_URL}/api/queue/${shopId}`, {
-    
+
+    const res = await fetch(`${BASE_URL}/api/queue/${shopId}`, {
       headers: {
         "Authorization": `Bearer ${token}`
       }
@@ -289,6 +297,8 @@ const res = await fetch(`${BASE_URL}/api/queue/${shopId}`, {
 
     data.forEach(customer => {
 
+      const savedValue = inputCache[customer.phone] || "";
+
       rows += `
       <tr>
         <td>${safe(customer.name)}</td>
@@ -297,8 +307,18 @@ const res = await fetch(`${BASE_URL}/api/queue/${shopId}`, {
         <td>₹${customer.totalSpent}</td>
         <td>${customer.points}</td>
         <td>
-          <input type="number" id="amount-${customer.phone}" placeholder="Amount">
-          <button onclick="givePoints('${customer.phone}', '${customer.queueId}', this)">Give</button>
+          <input 
+            type="number" 
+            id="amount-${customer.phone}" 
+            placeholder="Amount"
+            value="${savedValue}"
+            onfocus="activeInputPhone='${customer.phone}'"
+            onblur="activeInputPhone=null"
+            oninput="inputCache['${customer.phone}']=this.value"
+          >
+          <button onclick="givePoints('${customer.phone}', '${customer._id}', this)">
+            Give
+          </button>
           <div id="msg-${customer.phone}"></div>
         </td>
       </tr>`;
@@ -323,14 +343,15 @@ const res = await fetch(`${BASE_URL}/api/queue/${shopId}`, {
 }
 
 /* =========================
-ADD POINTS (FIXED)
+ADD POINTS
 ========================= */
 
 async function givePoints(phone, queueId, btn){
 
   if(btn.disabled) return;
 
-  const amount = document.getElementById(`amount-${phone}`).value;
+  const amountInput = document.getElementById(`amount-${phone}`);
+  const amount = amountInput.value;
   const msg = document.getElementById(`msg-${phone}`);
 
   if(!amount){
@@ -358,6 +379,9 @@ async function givePoints(phone, queueId, btn){
 
     msg.innerHTML=`<span class="success">+${data.pointsEarned}</span>`;
 
+    // 🔥 CLEAR CACHE AFTER SUCCESS
+    delete inputCache[phone];
+
     setTimeout(fetchQueue,500);
 
   }catch{
@@ -369,13 +393,13 @@ async function givePoints(phone, queueId, btn){
 }
 
 /* =========================
-AUTO REFRESH
+AUTO REFRESH (SMART)
 ========================= */
 
 fetchQueue();
 
 setInterval(()=>{
-  if(!document.hidden){
+  if(!document.hidden && !activeInputPhone){
     fetchQueue();
   }
 },3000);
