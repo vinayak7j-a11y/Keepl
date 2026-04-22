@@ -44,8 +44,8 @@ const captureCustomer = async (req, res) => {
       { phone },
       {
         $set: { name, phone },
-        $inc: { totalVisits: 1 },         // ✅ track total visits
-        $currentDate: { lastVisit: true }  // ✅ track last visit time
+        $inc: { totalVisits: 1 },
+        $currentDate: { lastVisit: true }
       },
       { new: true, upsert: true }
     );
@@ -77,7 +77,7 @@ const captureCustomer = async (req, res) => {
           phone,
           shopId: shop._id,
           status: "waiting",
-          expiresAt: new Date(Date.now() + 1000 * 60 * 10) // 10 min expiry
+          expiresAt: new Date(Date.now() + 1000 * 60 * 10)
         }
       },
       { new: true, upsert: true }
@@ -85,15 +85,77 @@ const captureCustomer = async (req, res) => {
 
     console.log(`✅ Customer queued: ${name} (${phone}) at shop ${shopId}`);
 
-    /* ===== RESPONSE ===== */
+    /* ===== SAFE OUTPUT ===== */
 
-    res.json({
-      success: true,
-      message: "Added to queue",
-      queueId: queueEntry._id,
-      points: wallet?.points || 0,
-      totalVisits: user.totalVisits || 1
-    });
+    const safeName = name.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const safeShop = shop.name.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+    /* ===== RESPONSE (PREMIUM UI) ===== */
+
+    res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${safeShop} Rewards</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+      body{
+        font-family:Arial;
+        background:#f5f6fa;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        height:100vh;
+        margin:0;
+      }
+      .card{
+        background:white;
+        padding:35px;
+        border-radius:12px;
+        box-shadow:0 8px 25px rgba(0,0,0,0.1);
+        width:90%;
+        max-width:380px;
+        text-align:center;
+      }
+      h1{
+        color:#2ecc71;
+        font-size:50px;
+        margin-bottom:10px;
+      }
+      h2{
+        font-size:22px;
+        margin-bottom:10px;
+      }
+      p{
+        font-size:18px;
+        margin:8px 0;
+        color:#444;
+      }
+      </style>
+    </head>
+    <body>
+
+      <div class="card">
+
+        <h1>✓</h1>
+        <h2>${safeShop}</h2>
+
+        <p>Thanks <strong>${safeName}</strong> 👋</p>
+
+        <p style="color:#2ecc71;font-weight:bold;">
+          You are successfully added to queue
+        </p>
+
+        <p>Your visits: ${user.totalVisits}</p>
+        <p>Your points: ${wallet?.points || 0}</p>
+
+        <p>Please show this screen to the shopkeeper</p>
+
+      </div>
+
+    </body>
+    </html>
+    `);
 
   } catch (error) {
     console.error("❌ Customer capture error:", error);
@@ -118,8 +180,6 @@ const getCustomer = async (req, res) => {
       });
     }
 
-    /* ===== FIND SHOP ===== */
-
     const shop = await Shop.findOne({ shopId }).lean();
 
     if (!shop) {
@@ -128,8 +188,6 @@ const getCustomer = async (req, res) => {
       });
     }
 
-    /* ===== FIND USER ===== */
-
     const user = await User.findOne({ phone }).lean();
 
     if (!user) {
@@ -137,8 +195,6 @@ const getCustomer = async (req, res) => {
         message: "Customer not found"
       });
     }
-
-    /* ===== FIND WALLET ===== */
 
     const wallet = await Wallet.findOne({
       userId: user._id,
@@ -165,7 +221,7 @@ const getCustomer = async (req, res) => {
 
 
 /* =========================
-   GET ALL CUSTOMERS FOR SHOP
+   GET SHOP CUSTOMERS
 ========================= */
 
 const getShopCustomers = async (req, res) => {
@@ -179,8 +235,6 @@ const getShopCustomers = async (req, res) => {
         message: "Shop not found"
       });
     }
-
-    /* ===== GET ALL WALLETS FOR THIS SHOP ===== */
 
     const wallets = await Wallet.find({
       shopId: shop._id
@@ -210,7 +264,6 @@ const getShopCustomers = async (req, res) => {
       };
     });
 
-    // ✅ Sort by points descending (top customers first)
     customers.sort((a, b) => b.points - a.points);
 
     res.json(customers);
@@ -225,7 +278,7 @@ const getShopCustomers = async (req, res) => {
 
 
 /* =========================
-   EXPORT — single style only
+   EXPORT
 ========================= */
 
 module.exports = {
