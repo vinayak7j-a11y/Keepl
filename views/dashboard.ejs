@@ -316,7 +316,7 @@ async function fetchQueue(){
             onblur="activeInputPhone=null"
             oninput="inputCache['${customer.phone}']=this.value"
           >
-          <button onclick="givePoints('${customer.phone}', '${customer._id}', this)">
+          <button onclick="givePoints('${customer.phone}', '${customer.queueId}', this)">
             Give
           </button>
           <div id="msg-${customer.phone}"></div>
