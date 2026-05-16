@@ -71,7 +71,13 @@ app.get("/", (req, res) => {
 app.use("/api/shops", shopRoutes); 
 console.log("🔥 /api/shops mounted");
 app.use("/api/customers", customerRoutes);
-app.use("/api/transactions", transactionRoutes);
+app.use("/api/transactions", transactionRoutes); 
+app.get("/debug-routes", (req, res) => {
+  res.json({
+    transactionsLoaded: !!transactionRoutes,
+    time: new Date()
+  });
+});
 app.use("/api/redeem", redeemRoutes);
 app.use("/api/queue", queueRoutes);
 
