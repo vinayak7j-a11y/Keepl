@@ -4,7 +4,7 @@ const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 
 /* =========================
-   GET QUEUE (OPTIMIZED)
+   GET QUEUE
 ========================= */
 
 exports.getQueue = async (req, res) => {
@@ -19,10 +19,11 @@ exports.getQueue = async (req, res) => {
 
     const now = new Date();
 
+    // ✅ Only show waiting entries that haven't expired
     const queue = await CustomerQueue.find({
       shopId: shop._id,
       status: "waiting",
-      expiresAt: { $gt: now } // ✅ remove expired
+      expiresAt: { $gt: now }
     })
       .sort({ createdAt: 1 })
       .limit(50)
@@ -30,7 +31,8 @@ exports.getQueue = async (req, res) => {
 
     const phones = queue.map(q => q.phone);
 
-    /* ===== BULK USERS ===== */
+    /* ===== BULK FETCH USERS ===== */
+
     const users = await User.find({
       phone: { $in: phones }
     }).lean();
@@ -40,7 +42,8 @@ exports.getQueue = async (req, res) => {
       userMap[u.phone] = u;
     });
 
-    /* ===== BULK WALLETS ===== */
+    /* ===== BULK FETCH WALLETS ===== */
+
     const userIds = users.map(u => u._id);
 
     const wallets = await Wallet.find({
@@ -53,14 +56,14 @@ exports.getQueue = async (req, res) => {
       walletMap[w.userId.toString()] = w;
     });
 
+    /* ===== BUILD ENRICHED QUEUE ===== */
+
     const enrichedQueue = queue.map(q => {
       const user = userMap[q.phone];
-      const wallet = user
-        ? walletMap[user._id.toString()]
-        : null;
+      const wallet = user ? walletMap[user._id.toString()] : null;
 
       return {
-        queueId: q._id, // 🔥 IMPORTANT
+        queueId: q._id,
         name: q.name,
         phone: q.phone,
         visits: user?.totalVisits || 0,
@@ -73,14 +76,14 @@ exports.getQueue = async (req, res) => {
     res.json(enrichedQueue);
 
   } catch (error) {
-    console.error("Queue fetch error:", error);
+    console.error("❌ Queue fetch error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
 
 /* =========================
-   ADD CUSTOMER TO QUEUE (FIXED)
+   ADD CUSTOMER TO QUEUE
 ========================= */
 
 exports.addToQueue = async (req, res) => {
@@ -93,8 +96,7 @@ exports.addToQueue = async (req, res) => {
       return res.status(404).json({ message: "Shop not found" });
     }
 
-    /* ✅ ATOMIC UPSERT (NO DUPLICATES EVER) */
-
+    // ✅ Atomic upsert — no duplicates
     const queueItem = await CustomerQueue.findOneAndUpdate(
       {
         phone,
@@ -110,26 +112,23 @@ exports.addToQueue = async (req, res) => {
           expiresAt: new Date(Date.now() + 1000 * 60 * 10)
         }
       },
-      {
-        new: true,
-        upsert: true
-      }
+      { new: true, upsert: true }
     );
 
     res.json({
-      message: "Customer added/updated in queue",
+      message: "Customer added to queue",
       queueItem
     });
 
   } catch (error) {
-    console.error("Queue add error:", error);
+    console.error("❌ Queue add error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
 
 /* =========================
-   COMPLETE QUEUE ITEM (IMPORTANT FIX)
+   COMPLETE QUEUE ITEM
 ========================= */
 
 exports.completeQueue = async (req, res) => {
@@ -138,7 +137,7 @@ exports.completeQueue = async (req, res) => {
 
     const updated = await CustomerQueue.findByIdAndUpdate(
       id,
-      { status: "completed" },
+      { $set: { status: "completed" } }, // ✅ consistent status
       { new: true }
     );
 
@@ -147,12 +146,12 @@ exports.completeQueue = async (req, res) => {
     }
 
     res.json({
-      message: "Queue completed",
+      message: "Queue item completed",
       updated
     });
 
   } catch (error) {
-    console.error("Queue complete error:", error);
+    console.error("❌ Queue complete error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -172,17 +171,24 @@ exports.clearQueue = async (req, res) => {
       return res.status(404).json({ message: "Shop not found" });
     }
 
-    await CustomerQueue.deleteMany({
+    // ✅ Delete both completed and expired entries
+    const result = await CustomerQueue.deleteMany({
       shopId: shop._id,
-      status: "completed"
+      $or: [
+        { status: "completed" },
+        { expiresAt: { $lt: new Date() } }
+      ]
     });
 
+    console.log(`🧹 Cleared ${result.deletedCount} queue entries for ${shopId}`);
+
     res.json({
-      message: "Completed queue cleared"
+      message: "Queue cleared",
+      cleared: result.deletedCount
     });
 
   } catch (error) {
-    console.error("Queue clear error:", error);
+    console.error("❌ Queue clear error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
