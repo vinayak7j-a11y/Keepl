@@ -52,13 +52,13 @@ const addTransaction = async (req, res) => {
     }
 
     /* ===== CALCULATE POINTS ===== */
-    // 10 points per ₹100 spent (rewardRate default is 10)
+    // 10 points per ₹100 spent
 
     const rewardRate = shop.rewardRate || 10;
     const amount = Number(billAmount);
     const pointsEarned = Math.floor((amount / 100) * rewardRate);
 
-    console.log(`💰 Bill: ₹${amount} → Points: ${pointsEarned}`);
+    console.log(`💰 Bill: ₹${amount} → Points earned: ${pointsEarned}`);
 
     /* ===== UPDATE WALLET ===== */
 
@@ -69,8 +69,8 @@ const addTransaction = async (req, res) => {
       },
       {
         $inc: {
-          points: pointsEarned,       // ✅ add points
-          totalEarned: pointsEarned   // ✅ track lifetime points earned
+          points: pointsEarned,
+          totalEarned: pointsEarned
         }
       },
       {
@@ -84,7 +84,7 @@ const addTransaction = async (req, res) => {
     await User.findOneAndUpdate(
       { _id: user._id },
       {
-        $inc: { totalSpent: amount } // ✅ track total money spent
+        $inc: { totalSpent: amount }
       }
     );
 
@@ -101,40 +101,42 @@ const addTransaction = async (req, res) => {
       }
     );
 
-    /* ===== SAVE TRANSACTION RECORD ===== */
+    /* ===== SAVE TRANSACTION ===== */
+    // ✅ FIX: added type: "earn" and source: "queue" — both required by schema
 
     const transaction = await Transaction.create({
       shopId: shop._id,
       userId: user._id,
       phone,
       billAmount: amount,
-      points: pointsEarned
+      points: pointsEarned,
+      type: "earn",          // ✅ required field — was missing before
+      source: "queue",       // ✅ tells us it came from shopkeeper dashboard
+      description: `₹${amount} purchase — ${pointsEarned} pts earned`
     });
 
     /* ===== CLEAR QUEUE ===== */
 
     if (queueId) {
-      // Remove by queueId if provided
       await CustomerQueue.findByIdAndUpdate(queueId, {
-        $set: { status: "done" }
+        $set: { status: "completed" }
       });
-      console.log(`✅ Queue entry ${queueId} marked as done`);
+      console.log(`✅ Queue entry ${queueId} marked as completed`);
     } else {
-      // Fallback: clear by phone + shopId
       await CustomerQueue.findOneAndUpdate(
         {
           phone,
           shopId: shop._id,
           status: { $in: ["waiting", "processing"] }
         },
-        { $set: { status: "done" } }
+        { $set: { status: "completed" } }
       );
-      console.log(`✅ Queue cleared for ${phone}`);
+      console.log(`✅ Queue cleared for ${phone} by phone fallback`);
     }
 
     /* ===== RESPONSE ===== */
 
-    console.log(`✅ Transaction complete: ${phone} earned ${pointsEarned} pts`);
+    console.log(`✅ Done: ${phone} earned ${pointsEarned} pts, total now: ${wallet.points}`);
 
     res.json({
       success: true,
@@ -148,7 +150,8 @@ const addTransaction = async (req, res) => {
   } catch (error) {
     console.error("❌ Transaction error:", error);
     res.status(500).json({
-      message: "Server error"
+      message: "Server error",
+      detail: error.message // ✅ helps debug on Render logs
     });
   }
 };
@@ -173,7 +176,7 @@ const getTransactions = async (req, res) => {
     const transactions = await Transaction.find({
       shopId: shop._id
     })
-      .sort({ createdAt: -1 }) // newest first
+      .sort({ createdAt: -1 })
       .limit(100)
       .lean();
 
