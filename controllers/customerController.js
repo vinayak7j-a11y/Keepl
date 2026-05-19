@@ -14,31 +14,19 @@ const captureCustomer = async (req, res) => {
     name = name?.trim();
     phone = phone?.trim();
 
-    /* ===== VALIDATION ===== */
-
     if (!name || !phone || !shopId) {
-      return res.status(400).json({
-        message: "Name, phone and shopId are required"
-      });
+      return res.status(400).json({ message: "Name, phone and shopId are required" });
     }
 
     if (!/^[0-9]{10}$/.test(phone)) {
-      return res.status(400).json({
-        message: "Phone number must be exactly 10 digits"
-      });
+      return res.status(400).json({ message: "Phone number must be exactly 10 digits" });
     }
-
-    /* ===== FIND SHOP ===== */
 
     const shop = await Shop.findOne({ shopId });
 
     if (!shop) {
-      return res.status(404).json({
-        message: "Shop not found"
-      });
+      return res.status(404).json({ message: "Shop not found" });
     }
-
-    /* ===== USER UPSERT + VISIT TRACKING ===== */
 
     const user = await User.findOneAndUpdate(
       { phone },
@@ -50,11 +38,9 @@ const captureCustomer = async (req, res) => {
       { new: true, upsert: true }
     );
 
-    /* ===== WALLET UPSERT ===== */
-
     await Wallet.findOneAndUpdate(
       { userId: user._id, shopId: shop._id },
-      { $setOnInsert: { points: 0, totalEarned: 0 } },
+      { $setOnInsert: { points: 0, totalEarned: 0, totalRedeemed: 0 } },
       { upsert: true }
     );
 
@@ -62,8 +48,6 @@ const captureCustomer = async (req, res) => {
       userId: user._id,
       shopId: shop._id
     }).lean();
-
-    /* ===== QUEUE UPSERT ===== */
 
     const queueEntry = await CustomerQueue.findOneAndUpdate(
       {
@@ -85,83 +69,17 @@ const captureCustomer = async (req, res) => {
 
     console.log(`✅ Customer queued: ${name} (${phone}) at shop ${shopId}`);
 
-    /* ===== SAFE OUTPUT ===== */
-
-    const safeName = name.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const safeShop = shop.name.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-
-    /* ===== RESPONSE (PREMIUM UI) ===== */
-
-    res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>${safeShop} Rewards</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <style>
-      body{
-        font-family:Arial;
-        background:#f5f6fa;
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        height:100vh;
-        margin:0;
-      }
-      .card{
-        background:white;
-        padding:35px;
-        border-radius:12px;
-        box-shadow:0 8px 25px rgba(0,0,0,0.1);
-        width:90%;
-        max-width:380px;
-        text-align:center;
-      }
-      h1{
-        color:#2ecc71;
-        font-size:50px;
-        margin-bottom:10px;
-      }
-      h2{
-        font-size:22px;
-        margin-bottom:10px;
-      }
-      p{
-        font-size:18px;
-        margin:8px 0;
-        color:#444;
-      }
-      </style>
-    </head>
-    <body>
-
-      <div class="card">
-
-        <h1>✓</h1>
-        <h2>${safeShop}</h2>
-
-        <p>Thanks <strong>${safeName}</strong> 👋</p>
-
-        <p style="color:#2ecc71;font-weight:bold;">
-          You are successfully added to queue
-        </p>
-
-        <p>Your visits: ${user.totalVisits}</p>
-        <p>Your points: ${wallet?.points || 0}</p>
-
-        <p>Please show this screen to the shopkeeper</p>
-
-      </div>
-
-    </body>
-    </html>
-    `);
+    res.json({
+      success: true,
+      message: "Added to queue",
+      queueId: queueEntry._id,
+      points: wallet?.points || 0,
+      totalVisits: user.totalVisits || 1
+    });
 
   } catch (error) {
     console.error("❌ Customer capture error:", error);
-    res.status(500).json({
-      message: "Something went wrong. Please try again."
-    });
+    res.status(500).json({ message: "Something went wrong. Please try again." });
   }
 };
 
@@ -175,25 +93,19 @@ const getCustomer = async (req, res) => {
     const { phone, shopId } = req.params;
 
     if (!phone || !shopId) {
-      return res.status(400).json({
-        message: "Phone and shopId are required"
-      });
+      return res.status(400).json({ message: "Phone and shopId are required" });
     }
 
     const shop = await Shop.findOne({ shopId }).lean();
 
     if (!shop) {
-      return res.status(404).json({
-        message: "Shop not found"
-      });
+      return res.status(404).json({ message: "Shop not found" });
     }
 
     const user = await User.findOne({ phone }).lean();
 
     if (!user) {
-      return res.status(404).json({
-        message: "Customer not found"
-      });
+      return res.status(404).json({ message: "Customer not found" });
     }
 
     const wallet = await Wallet.findOne({
@@ -213,15 +125,58 @@ const getCustomer = async (req, res) => {
 
   } catch (error) {
     console.error("❌ Get customer error:", error);
-    res.status(500).json({
-      message: "Server error"
-    });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
 
 /* =========================
-   GET SHOP CUSTOMERS
+   GET WALLET — used by thank you
+   page to poll live points
+   GET /api/customers/wallet/:phone/:shopId
+========================= */
+
+const getWallet = async (req, res) => {
+  try {
+    const { phone, shopId } = req.params;
+
+    if (!phone || !shopId) {
+      return res.status(400).json({ message: "Phone and shopId are required" });
+    }
+
+    const shop = await Shop.findOne({ shopId }).lean();
+
+    if (!shop) {
+      return res.status(404).json({ message: "Shop not found" });
+    }
+
+    const user = await User.findOne({ phone }).lean();
+
+    if (!user) {
+      // customer not found yet — return 0 points safely
+      return res.json({ points: 0, totalEarned: 0 });
+    }
+
+    const wallet = await Wallet.findOne({
+      userId: user._id,
+      shopId: shop._id
+    }).lean();
+
+    res.json({
+      points: wallet?.points || 0,
+      totalEarned: wallet?.totalEarned || 0,
+      totalRedeemed: wallet?.totalRedeemed || 0
+    });
+
+  } catch (error) {
+    console.error("❌ Get wallet error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+/* =========================
+   GET ALL CUSTOMERS FOR SHOP
 ========================= */
 
 const getShopCustomers = async (req, res) => {
@@ -231,25 +186,17 @@ const getShopCustomers = async (req, res) => {
     const shop = await Shop.findOne({ shopId }).lean();
 
     if (!shop) {
-      return res.status(404).json({
-        message: "Shop not found"
-      });
+      return res.status(404).json({ message: "Shop not found" });
     }
 
-    const wallets = await Wallet.find({
-      shopId: shop._id
-    }).lean();
+    const wallets = await Wallet.find({ shopId: shop._id }).lean();
 
     const userIds = wallets.map(w => w.userId);
 
-    const users = await User.find({
-      _id: { $in: userIds }
-    }).lean();
+    const users = await User.find({ _id: { $in: userIds } }).lean();
 
     const userMap = {};
-    users.forEach(u => {
-      userMap[u._id.toString()] = u;
-    });
+    users.forEach(u => { userMap[u._id.toString()] = u; });
 
     const customers = wallets.map(w => {
       const user = userMap[w.userId.toString()];
@@ -264,15 +211,14 @@ const getShopCustomers = async (req, res) => {
       };
     });
 
+    // sort by points descending
     customers.sort((a, b) => b.points - a.points);
 
     res.json(customers);
 
   } catch (error) {
     console.error("❌ Get shop customers error:", error);
-    res.status(500).json({
-      message: "Server error"
-    });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -284,5 +230,6 @@ const getShopCustomers = async (req, res) => {
 module.exports = {
   captureCustomer,
   getCustomer,
+  getWallet,
   getShopCustomers
 };

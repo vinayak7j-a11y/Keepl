@@ -4,27 +4,27 @@ const Shop = require("../models/Shop");
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const CustomerQueue = require("../models/CustomerQueue");
- 
+
 /* =========================
    CUSTOMER SCAN PAGE
    GET /scan/:shopId
 ========================= */
- 
+
 router.get("/:shopId", async (req, res) => {
   try {
     const { shopId } = req.params;
- 
+
     const shop = await Shop.findOne({ shopId }).lean();
- 
+
     if (!shop) {
       return res.status(404).send("Shop not found");
     }
- 
+
     const shopName = String(shop.name)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
- 
+
     res.send(`<!DOCTYPE html>
 <html>
 <head>
@@ -36,18 +36,11 @@ router.get("/:shopId", async (req, res) => {
     font-family: Arial, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
+    display: flex; justify-content: center; align-items: center; padding: 20px;
   }
   .card {
-    background: white;
-    border-radius: 20px;
-    padding: 40px 30px;
-    width: 100%;
-    max-width: 380px;
-    text-align: center;
+    background: white; border-radius: 20px; padding: 40px 30px;
+    width: 100%; max-width: 380px; text-align: center;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
   }
   .shop-icon {
@@ -55,8 +48,7 @@ router.get("/:shopId", async (req, res) => {
     background: linear-gradient(135deg, #667eea, #764ba2);
     border-radius: 18px;
     display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 20px;
-    font-size: 32px;
+    margin: 0 auto 20px; font-size: 32px;
   }
   h2 { font-size: 22px; color: #2d3436; margin-bottom: 6px; }
   .subtitle { color: #636e72; font-size: 14px; margin-bottom: 28px; }
@@ -101,71 +93,69 @@ function handleSubmit(e){
 </script>
 </body>
 </html>`);
- 
+
   } catch (error) {
     console.error("Scan page error:", error);
     res.status(500).send("Something went wrong");
   }
 });
- 
- 
+
+
 /* =========================
    CAPTURE CUSTOMER
    POST /scan/capture
+   ✅ FIX: redirects to /scan/thankyou
+   instead of rendering success HTML
+   so reloading never re-joins queue
 ========================= */
- 
+
 router.post("/capture", async (req, res) => {
   try {
     let { name, phone, shopId } = req.body;
- 
+
     name = name?.trim();
     phone = phone?.trim();
- 
+
     /* ===== VALIDATION ===== */
- 
+
     if (!name || !phone || !shopId) {
       return res.status(400).send("All fields are required");
     }
- 
+
     if (!/^[0-9]{10}$/.test(phone)) {
       return res.status(400).send("Phone number must be 10 digits");
     }
- 
+
     /* ===== FIND SHOP ===== */
- 
+
     const shop = await Shop.findOne({ shopId });
- 
+
     if (!shop) {
       return res.status(404).send("Shop not found");
     }
- 
+
     /* ===== UPSERT USER + TRACK VISIT ===== */
- 
+
     const user = await User.findOneAndUpdate(
       { phone },
       {
         $set: { name, phone },
-        $inc: { totalVisits: 1 },          // ✅ track visits
-        $currentDate: { lastVisit: true }   // ✅ track last visit
+        $inc: { totalVisits: 1 },
+        $currentDate: { lastVisit: true }
       },
       { new: true, upsert: true }
     );
- 
+
     /* ===== UPSERT WALLET ===== */
- 
+
     await Wallet.findOneAndUpdate(
       { userId: user._id, shopId: shop._id },
       { $setOnInsert: { points: 0, totalEarned: 0, totalRedeemed: 0 } },
       { upsert: true }
     );
- 
-    const wallet = await Wallet.findOne({
-      userId: user._id,
-      shopId: shop._id
-    }).lean();
- 
+
     /* ===== UPSERT QUEUE ===== */
- 
+
     await CustomerQueue.findOneAndUpdate(
       {
         phone,
@@ -178,28 +168,63 @@ router.post("/capture", async (req, res) => {
           phone,
           shopId: shop._id,
           status: "waiting",
-          expiresAt: new Date(Date.now() + 1000 * 60 * 10) // 10 min
+          expiresAt: new Date(Date.now() + 1000 * 60 * 10)
         }
       },
       { new: true, upsert: true }
     );
- 
+
     console.log(`✅ Customer scanned: ${name} (${phone}) at ${shopId}`);
- 
-    /* ===== SANITIZE FOR HTML ===== */
- 
-    const points = wallet?.points || 0;
-    const shopName = String(shop.name)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const customerName = String(name)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
- 
-    /* ===== SUCCESS PAGE ===== */
- 
+
+    // ✅ FIX: redirect to thank you page with params
+    // reloading this page will just show the thank you page
+    // it will NOT re-submit the form or re-join the queue
+    res.redirect(
+      `/scan/thankyou?name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&shopId=${encodeURIComponent(shopId)}`
+    );
+
+  } catch (error) {
+    console.error("❌ Capture error:", error);
+    res.status(500).send("Something went wrong. Please try again.");
+  }
+});
+
+
+/* =========================
+   THANK YOU PAGE
+   GET /scan/thankyou
+   ✅ Safe to reload — no queue re-entry
+   ✅ Polls wallet API every 3s to show
+   live points after shopkeeper gives them
+========================= */
+
+router.get("/thankyou", async (req, res) => {
+  try {
+    const { name, phone, shopId } = req.query;
+
+    if (!name || !phone || !shopId) {
+      return res.redirect("/");
+    }
+
+    const shopName = await Shop.findOne({ shopId })
+      .select("name")
+      .lean()
+      .then(s => s?.name || "the shop");
+
+    const safeShopName = String(shopName)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+    const safeName = String(name)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
     res.send(`<!DOCTYPE html>
 <html>
 <head>
-<title>Welcome to ${shopName}</title>
+<title>Welcome to ${safeShopName}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -224,13 +249,32 @@ router.post("/capture", async (req, res) => {
   .points-box {
     background: linear-gradient(135deg, #667eea, #764ba2);
     border-radius: 15px; padding: 20px; color: white; margin-bottom: 25px;
+    transition: transform 0.3s;
   }
-  .points-box .label { font-size: 13px; opacity: 0.85; margin-bottom: 5px; }
-  .points-box .points { font-size: 48px; font-weight: bold; line-height: 1; }
-  .points-box .unit { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+  .points-box.updated { transform: scale(1.04); }
+  .label { font-size: 13px; opacity: 0.85; margin-bottom: 5px; }
+  .points { font-size: 48px; font-weight: bold; line-height: 1; }
+  .unit { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+  .status {
+    font-size: 13px; color: #888; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #2ecc71;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
   .info {
     background: #f8f9fa; border-radius: 10px; padding: 15px;
     font-size: 14px; color: #555; margin-bottom: 20px; line-height: 1.8;
+  }
+  .redeem-banner {
+    background: #fff3cd; border-radius: 10px; padding: 12px;
+    font-size: 14px; color: #856404; margin-bottom: 20px;
+    display: none;
   }
   .footer { font-size: 12px; color: #b2bec3; margin-top: 10px; }
 </style>
@@ -238,27 +282,87 @@ router.post("/capture", async (req, res) => {
 <body>
 <div class="card">
   <div class="checkmark">✓</div>
-  <h2>Welcome, ${customerName}!</h2>
-  <p class="subtitle">You're checked in at <strong>${shopName}</strong></p>
-  <div class="points-box">
+  <h2>Welcome, ${safeName}!</h2>
+  <p class="subtitle">You're checked in at <strong>${safeShopName}</strong></p>
+
+  <div class="points-box" id="pointsBox">
     <div class="label">Your Current Points</div>
-    <div class="points">${points}</div>
+    <div class="points" id="pointsDisplay">...</div>
     <div class="unit">pts</div>
   </div>
+
+  <div class="status">
+    <div class="dot"></div>
+    <span id="statusText">Waiting for shopkeeper...</span>
+  </div>
+
+  <div class="redeem-banner" id="redeemBanner">
+    🎁 You have enough points to redeem a free reward! Tell the shopkeeper.
+  </div>
+
   <div class="info">
     🎯 Earn <strong>10 points</strong> for every <strong>₹100</strong> spent<br>
     🎁 Redeem <strong>100 points</strong> for a free reward!
   </div>
+
   <p class="footer">Powered by Keepl</p>
 </div>
+
+<script>
+  const phone = ${JSON.stringify(phone)};
+  const shopId = ${JSON.stringify(shopId)};
+  let lastPoints = null;
+  let pointsReceived = false;
+
+  async function fetchPoints() {
+    try {
+      const res = await fetch(
+        "/api/customers/wallet/" + encodeURIComponent(phone) + "/" + encodeURIComponent(shopId)
+      );
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const points = data.points || 0;
+
+      document.getElementById("pointsDisplay").innerText = points;
+
+      // ✅ Show redeem banner if enough points
+      if (points >= 100) {
+        document.getElementById("redeemBanner").style.display = "block";
+      }
+
+      // ✅ Animate when points update
+      if (lastPoints !== null && points > lastPoints) {
+        const box = document.getElementById("pointsBox");
+        box.classList.add("updated");
+        setTimeout(() => box.classList.remove("updated"), 400);
+        document.getElementById("statusText").innerText =
+          "+" + (points - lastPoints) + " points added!";
+        pointsReceived = true;
+      } else if (!pointsReceived) {
+        document.getElementById("statusText").innerText =
+          "Waiting for shopkeeper...";
+      }
+
+      lastPoints = points;
+
+    } catch (err) {
+      console.log("Poll error:", err);
+    }
+  }
+
+  // fetch immediately then every 3 seconds
+  fetchPoints();
+  setInterval(fetchPoints, 3000);
+</script>
 </body>
 </html>`);
- 
+
   } catch (error) {
-    console.error("❌ Capture error:", error);
-    res.status(500).send("Something went wrong. Please try again.");
+    console.error("Thankyou page error:", error);
+    res.status(500).send("Something went wrong");
   }
 });
- 
+
 module.exports = router;
- 
