@@ -5,26 +5,32 @@
 
 <title>Keepl – Register Shop</title>
 
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <link rel="stylesheet" href="/style.css">
 
-<style>
+<!-- ✅ Favicon -->
+<link rel="icon" href="/icons/keepl-192.png">
 
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2f80ed">
+
+<style>
 .message{
-margin-top:10px;
-font-size:14px;
-text-align:center;
+  margin-top:10px;
+  font-size:14px;
+  text-align:center;
 }
 
 .error{
-color:#e74c3c;
+  color:#e74c3c;
 }
 
 .success{
-color:#2ecc71;
+  color:#2ecc71;
 }
-
 </style>
 
 </head>
@@ -37,15 +43,15 @@ color:#2ecc71;
 
 <form id="registerForm">
 
-<input id="name" placeholder="Shop Name" required>
+  <input id="name" placeholder="Shop Name" required>
 
-<input id="ownerName" placeholder="Owner Name" required>
+  <input id="ownerName" placeholder="Owner Name" required>
 
-<input id="phone" type="tel" placeholder="Phone Number" required>
+  <input id="phone" type="tel" placeholder="Phone Number" required>
 
-<input id="password" type="password" placeholder="Password (min 6 chars)" required>
+  <input id="password" type="password" placeholder="Password (min 6 chars)" required>
 
-<button id="registerBtn" type="submit">Register</button>
+  <button id="registerBtn" type="submit">Register</button>
 
 </form>
 
@@ -59,99 +65,88 @@ Already have an account?
 </div>
 
 <script>
-
 const BASE_URL = "https://keepl.onrender.com";
 
-const form = document.getElementById("registerForm")
+const form = document.getElementById("registerForm");
 
-form.addEventListener("submit", register)
+form.addEventListener("submit", register);
 
-async function register(e){
+async function register(e) {
 
-e.preventDefault()
+  e.preventDefault();
 
-const name = document.getElementById("name").value.trim()
-const ownerName = document.getElementById("ownerName").value.trim()
-const phone = document.getElementById("phone").value.trim()
-const password = document.getElementById("password").value.trim()
+  const name = document.getElementById("name").value.trim();
+  const ownerName = document.getElementById("ownerName").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const password = document.getElementById("password").value.trim();
 
-const messageBox = document.getElementById("message")
-const button = document.getElementById("registerBtn")
+  const messageBox = document.getElementById("message");
+  const button = document.getElementById("registerBtn");
 
-messageBox.innerHTML = ""
+  messageBox.innerHTML = "";
 
-/* ===== VALIDATION ===== */
+  /* ===== VALIDATION ===== */
 
-if(!name || !ownerName || !phone || !password){
-messageBox.innerHTML = "<span class='error'>All fields are required</span>"
-return
+  if (!name || !ownerName || !phone || !password) {
+    messageBox.innerHTML = "<span class='error'>All fields are required</span>";
+    return;
+  }
+
+  if (phone.length < 10) {
+    messageBox.innerHTML = "<span class='error'>Enter a valid phone number</span>";
+    return;
+  }
+
+  if (password.length < 6) {
+    messageBox.innerHTML = "<span class='error'>Password must be at least 6 characters</span>";
+    return;
+  }
+
+  /* ===== LOADING STATE ===== */
+
+  button.disabled = true;
+  button.innerText = "Registering...";
+
+  try {
+
+    const res = await fetch(`${BASE_URL}/api/shops/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ name, ownerName, phone, password })
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.shopId) {
+      messageBox.innerHTML = "<span class='success'>Shop registered successfully! Redirecting...</span>";
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1500);
+    } else {
+      messageBox.innerHTML = `<span class="error">${data.message || "Registration failed"}</span>`;
+    }
+
+  } catch (err) {
+    console.error(err);
+    messageBox.innerHTML = "<span class='error'>Server error. Please try again</span>";
+  }
+
+  button.disabled = false;
+  button.innerText = "Register";
 }
+</script>
 
-if(phone.length < 10){
-messageBox.innerHTML = "<span class='error'>Enter a valid phone number</span>"
-return
+<!-- ✅ SERVICE WORKER REGISTRATION -->
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("/sw.js")
+    .then(() => console.log("✅ Service Worker registered"))
+    .catch(err => console.log("SW failed:", err));
 }
-
-if(password.length < 6){
-messageBox.innerHTML = "<span class='error'>Password must be at least 6 characters</span>"
-return
-}
-
-/* ===== LOADING STATE ===== */
-
-button.disabled = true
-button.innerText = "Registering..."
-
-try{
-
-const res = await fetch(`${BASE_URL}/api/shops/register`,{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body: JSON.stringify({
-name,
-ownerName,
-phone,
-password
-})
-
-})
-
-const data = await res.json()
-
-if(res.ok && data.shopId){
-
-messageBox.innerHTML = "<span class='success'>Shop registered successfully</span>"
-
-setTimeout(()=>{
-window.location.href="/"
-},1500)
-
-}else{
-
-messageBox.innerHTML = `<span class="error">${data.message || "Registration failed"}</span>`
-
-}
-
-}catch(err){
-
-console.error(err)
-
-messageBox.innerHTML = "<span class='error'>Server error. Please try again</span>"
-
-}
-
-button.disabled = false
-button.innerText = "Register"
-
-}
-
 </script>
 
 </body>
-
 </html>
