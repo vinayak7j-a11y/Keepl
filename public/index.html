@@ -9,6 +9,9 @@
 
 <link rel="stylesheet" href="/style.css">
 
+<!-- ✅ Favicon -->
+<link rel="icon" href="/icons/keepl-192.png">
+
 <!-- PWA -->
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2f80ed">
@@ -64,7 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
 Access your shop rewards dashboard
 </p>
 
-<!-- ✅ CLEAN FORM -->
 <form id="loginForm">
 
   <input 
@@ -98,7 +100,7 @@ Don't have a shop account?
 
 </div>
 
-<!-- ✅ LOGIN SCRIPT -->
+<!-- LOGIN SCRIPT -->
 <script>
 const BASE_URL = "https://keepl.onrender.com";
 
@@ -136,7 +138,6 @@ form.addEventListener("submit", async (e) => {
     if (res.ok && data.shopId) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("shopId", data.shopId);
-
       window.location.href = "/dashboard/" + data.shopId;
     } else {
       errorMsg.innerText = data.message || "Login failed";
@@ -151,7 +152,7 @@ form.addEventListener("submit", async (e) => {
 });
 </script>
 
-<!-- PWA -->
+<!-- PWA INSTALL PROMPT -->
 <script>
 let deferredPrompt;
 
@@ -160,16 +161,26 @@ window.addEventListener("beforeinstallprompt", (e) => {
   deferredPrompt = e;
 
   const btn = document.getElementById("installBtn");
-  btn.style.display="block";
+  btn.style.display = "block";
 
   btn.onclick = async () => {
     deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
-    if(choice.outcome==="accepted"){
-      btn.style.display="none";
+    if(choice.outcome === "accepted"){
+      btn.style.display = "none";
     }
   };
 });
+</script>
+
+<!-- ✅ SERVICE WORKER REGISTRATION -->
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("/sw.js")
+    .then(() => console.log("✅ Service Worker registered"))
+    .catch(err => console.log("SW failed:", err));
+}
 </script>
 
 </body>
