@@ -59,6 +59,22 @@ background:#e74c3c;
 background:#c0392b;
 }
 
+/* ✅ WhatsApp button style */
+.wa-btn{
+background:#25d366;
+color:white;
+border:none;
+padding:8px 12px;
+cursor:pointer;
+border-radius:6px;
+font-size:13px;
+margin-left:6px;
+}
+
+.wa-btn:hover{
+background:#1da851;
+}
+
 .stats{
 display:flex;
 gap:20px;
@@ -115,11 +131,12 @@ padding:20px;
 color:#777;
 }
 
-input{
+input[type="number"]{
 padding:8px;
 border-radius:6px;
 border:1px solid #ddd;
 width:110px;
+font-size:14px;
 }
 
 .success{
@@ -141,6 +158,7 @@ display:none;
 @media(max-width:600px){
 body{ padding:15px; }
 .statBox{ min-width:100%; }
+table{ font-size:13px; }
 }
 </style>
 
@@ -181,17 +199,20 @@ body{ padding:15px; }
 
 <div class="card">
 <h3>Customers Waiting</h3>
-
 <table id="queueTable"></table>
 </div>
 
 <div class="card qrSection">
 <h3>Your Shop QR</h3>
 
-<img 
-src="<%= shop.qrCode %>" 
-width="200"
-style="border-radius:10px;padding:10px;background:white;box-shadow:0 4px 10px rgba(0,0,0,0.08);">
+<% if(shop.qrCode){ %>
+<img
+  src="<%= shop.qrCode %>"
+  width="200"
+  style="border-radius:10px;padding:10px;background:white;box-shadow:0 4px 10px rgba(0,0,0,0.08);">
+<% } else { %>
+<p style="color:#e74c3c;">QR not generated. Please logout and login again.</p>
+<% } %>
 
 <p>Customers scan this QR to earn rewards</p>
 </div>
@@ -205,17 +226,20 @@ const BASE_URL = "https://keepl.onrender.com";
 const token = localStorage.getItem("token");
 const shopIdLocal = localStorage.getItem("shopId");
 
+// ✅ Pass shop name from EJS to JS for WhatsApp message
+const SHOP_NAME = "<%= shop.name %>";
+
 if(!token || !shopIdLocal){
   window.location.href="/";
 }
 
 /* =========================
-STATE MANAGEMENT (NEW 🔥)
+STATE MANAGEMENT
 ========================= */
 
 let isFetching = false;
 let activeInputPhone = null;
-let inputCache = {}; // stores typed values
+let inputCache = {};
 
 /* =========================
 LOGOUT
@@ -239,13 +263,35 @@ function safe(text){
 }
 
 /* =========================
+WHATSAPP MESSAGE SENDER
+========================= */
+
+function sendWhatsApp(phone, customerName, pointsEarned, totalPoints){
+  // ✅ Build pre-filled WhatsApp message
+  const message =
+    `Hi ${customerName}! 🎉\n\n` +
+    `You just earned *${pointsEarned} points* at *${SHOP_NAME}*.\n\n` +
+    `Your total points: *${totalPoints} pts*\n\n` +
+    `🎁 Collect *100 points* to redeem a free reward!\n\n` +
+    `Keep shopping with us 😊\n` +
+    `– ${SHOP_NAME} via Keepl`;
+
+  // ✅ Indian numbers need +91 prefix
+  // Remove leading 0 or +91 if present, then add 91
+  const cleanPhone = phone.replace(/^(\+91|91|0)/, "");
+  const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+  window.open(waUrl, "_blank");
+}
+
+/* =========================
 FETCH QUEUE
 ========================= */
 
 async function fetchQueue(){
 
   if(isFetching) return;
-  if(activeInputPhone) return; // 🔥 STOP refresh while typing
+  if(activeInputPhone) return;
 
   isFetching = true;
 
@@ -307,16 +353,16 @@ async function fetchQueue(){
         <td>₹${customer.totalSpent}</td>
         <td>${customer.points}</td>
         <td>
-          <input 
-            type="number" 
-            id="amount-${customer.phone}" 
+          <input
+            type="number"
+            id="amount-${customer.phone}"
             placeholder="Amount"
             value="${savedValue}"
             onfocus="activeInputPhone='${customer.phone}'"
             onblur="activeInputPhone=null"
             oninput="inputCache['${customer.phone}']=this.value"
           >
-          <button onclick="givePoints('${customer.phone}', '${customer.queueId}', this)">
+          <button onclick="givePoints('${customer.phone}', '${customer.queueId}', '${safe(customer.name)}', this)">
             Give
           </button>
           <div id="msg-${customer.phone}"></div>
@@ -343,10 +389,10 @@ async function fetchQueue(){
 }
 
 /* =========================
-ADD POINTS
+ADD POINTS + WHATSAPP
 ========================= */
 
-async function givePoints(phone, queueId, btn){
+async function givePoints(phone, queueId, customerName, btn){
 
   if(btn.disabled) return;
 
@@ -354,7 +400,7 @@ async function givePoints(phone, queueId, btn){
   const amount = amountInput.value;
   const msg = document.getElementById(`msg-${phone}`);
 
-  if(!amount){
+  if(!amount || amount <= 0){
     msg.innerHTML="<span class='error'>Enter amount</span>";
     return;
   }
@@ -377,12 +423,26 @@ async function givePoints(phone, queueId, btn){
 
     const data = await res.json();
 
-    msg.innerHTML=`<span class="success">+${data.pointsEarned}</span>`;
+    if(res.ok){
 
-    // 🔥 CLEAR CACHE AFTER SUCCESS
-    delete inputCache[phone];
+      // ✅ Show success + WhatsApp button
+      msg.innerHTML = `
+        <span class="success">+${data.pointsEarned} pts ✓</span>
+        <button
+          class="wa-btn"
+          onclick="sendWhatsApp('${phone}', '${customerName}', ${data.pointsEarned}, ${data.totalPoints})">
+          📲 WhatsApp
+        </button>`;
 
-    setTimeout(fetchQueue,500);
+      // ✅ Clear input cache
+      delete inputCache[phone];
+      amountInput.value = "";
+
+      setTimeout(fetchQueue, 1000);
+
+    } else {
+      msg.innerHTML=`<span class='error'>${data.message || "Error"}</span>`;
+    }
 
   }catch{
     msg.innerHTML="<span class='error'>Error</span>";
@@ -393,7 +453,7 @@ async function givePoints(phone, queueId, btn){
 }
 
 /* =========================
-AUTO REFRESH (SMART)
+AUTO REFRESH
 ========================= */
 
 fetchQueue();
