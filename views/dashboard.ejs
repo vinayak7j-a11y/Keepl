@@ -164,11 +164,55 @@ body{ padding:15px; }
 table{ font-size:13px; }
 input[type="number"]{ width:90px; }
 }
+
+/* =========================
+   TOAST NOTIFICATIONS
+========================= */
+
+#toastContainer{
+  position:fixed;
+  top:20px;
+  right:20px;
+  z-index:9999;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  max-width:300px;
+}
+
+.toast{
+  background:#e74c3c;
+  color:white;
+  padding:12px 18px;
+  border-radius:8px;
+  font-size:14px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);
+  animation:toastIn 0.3s ease;
+  line-height:1.4;
+}
+
+.toast.fadeout{
+  animation:toastOut 0.4s ease forwards;
+}
+
+@keyframes toastIn{
+  from{ opacity:0; transform:translateY(-10px); }
+  to{   opacity:1; transform:translateY(0); }
+}
+
+@keyframes toastOut{
+  from{ opacity:1; transform:translateY(0); }
+  to{   opacity:0; transform:translateY(-10px); }
+}
+
 </style>
 
 </head>
 
 <body>
+
+<!-- Toast container — expiry alerts appear here -->
+<div id="toastContainer"></div>
 
 <div class="header">
 <h1><%= shop.name %> Dashboard</h1>
@@ -226,7 +270,7 @@ input[type="number"]{ width:90px; }
 <script>
 
 /* =========================
-SESSION CHECK
+   SESSION CHECK
 ========================= */
 const BASE_URL = "https://keepl.onrender.com";
 const token = localStorage.getItem("token");
@@ -238,15 +282,20 @@ if(!token || !shopIdLocal){
 }
 
 /* =========================
-STATE
+   STATE
 ========================= */
 
 let isFetching = false;
-let activeInputPhone = null; // which input is focused
-let inputCache = {};         // saves typed amounts across re-renders
+let activeInputPhone = null;  // which input is focused
+let inputCache = {};          // saves typed amounts across re-renders
+
+// Expiry tracking
+let previousQueuePhones = new Set(); // phones present in last fetch
+let lastQueueNames = {};             // phone → name, for toast messages
+const recentlyProcessed = new Set(); // phones we just gave points / redeemed
 
 /* =========================
-LOGOUT
+   LOGOUT
 ========================= */
 
 function logout(){
@@ -257,7 +306,7 @@ function logout(){
 }
 
 /* =========================
-SAFE TEXT
+   SAFE TEXT
 ========================= */
 
 function safe(text){
@@ -267,16 +316,27 @@ function safe(text){
 }
 
 /* =========================
-WHATSAPP
-✅ Auto-opens immediately after
-   points are given — no extra click
-✅ Also shown as fallback button
-   in case popup was blocked
+   TOAST — expiry alert
+========================= */
+
+function showToast(message){
+  const container = document.getElementById("toastContainer");
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerText = message;
+  container.appendChild(toast);
+
+  // Start fade-out 200ms before removal
+  setTimeout(()=> toast.classList.add("fadeout"), 4800);
+  setTimeout(()=> toast.remove(), 5200);
+}
+
+/* =========================
+   WHATSAPP — points earned
 ========================= */
 
 function sendWhatsApp(phone, customerName, pointsEarned, totalPoints, amountSpent){
 
-  // Strip any prefix and add India code 91
   const cleanPhone = String(phone).replace(/\D/g,"").replace(/^(91|0)/,"");
 
   const message =
@@ -290,12 +350,30 @@ function sendWhatsApp(phone, customerName, pointsEarned, totalPoints, amountSpen
     `– ${SHOP_NAME} via Keepl`;
 
   const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
-
   window.open(waUrl, "_blank");
 }
 
 /* =========================
-FETCH QUEUE
+   WHATSAPP — redeem
+========================= */
+
+function sendWhatsAppRedeem(phone, customerName, pointsRedeemed, remainingPoints){
+  const cleanPhone = String(phone).replace(/\D/g, "").replace(/^(91|0)/, "");
+
+  const message =
+    `Hi ${customerName}! 🎁\n\n` +
+    `Your reward has been redeemed at *${SHOP_NAME}*.\n\n` +
+    `✅ Points Redeemed: *${pointsRedeemed} pts*\n` +
+    `🏆 Remaining Points: *${remainingPoints} pts*\n\n` +
+    `Keep visiting to earn more rewards!\n` +
+    `– ${SHOP_NAME} via Keepl`;
+
+  const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
+  window.open(waUrl, "_blank");
+}
+
+/* =========================
+   FETCH QUEUE
 ========================= */
 
 async function fetchQueue(){
@@ -325,16 +403,37 @@ async function fetchQueue(){
 
     const data = await res.json();
 
+    /* ── Expiry detection ── */
+    const currentPhones = new Set(data.map(c => c.phone));
+
+    previousQueuePhones.forEach(phone => {
+      if(!currentPhones.has(phone) && !recentlyProcessed.has(phone)){
+        // Was in queue, now gone, we didn't process them → expired
+        const name = lastQueueNames[phone] || phone;
+        showToast(`⏰ ${name} left the queue (session expired)`);
+      }
+    });
+
+    // Clean up processed set — remove phones no longer in queue
+    recentlyProcessed.forEach(phone => {
+      if(!currentPhones.has(phone)) recentlyProcessed.delete(phone);
+    });
+
+    // Save current state for next poll
+    previousQueuePhones = currentPhones;
+    data.forEach(c => { lastQueueNames[c.phone] = c.name; });
+    /* ── End expiry detection ── */
+
     const table = document.getElementById("queueTable");
     const waiting = document.getElementById("waitingCount");
 
     if(!data.length){
       table.innerHTML = `
-      <tr>
-  <th>Name</th><th>Phone</th><th>Visits</th>
-  <th>Total Spent</th><th>Points</th><th>Action</th><th>Redeem</th>
-</tr>
-      <tr><td colspan="7" class="empty">No customers in queue</td></tr>`;
+        <tr>
+          <th>Name</th><th>Phone</th><th>Visits</th>
+          <th>Total Spent</th><th>Points</th><th>Action</th><th>Redeem</th>
+        </tr>
+        <tr><td colspan="7" class="empty">No customers in queue</td></tr>`;
       waiting.innerText = 0;
       return;
     }
@@ -372,8 +471,8 @@ async function fetchQueue(){
             ${JSON.stringify(customer.name)},
             this
           )">Give</button>
-          <div id="msg-${customer.phone}"></div> 
-          </td>
+          <div id="msg-${customer.phone}"></div>
+        </td>
         <td>
           ${customer.points >= 100
             ? `<button
@@ -407,28 +506,29 @@ async function fetchQueue(){
 }
 
 /* =========================
-LIVE STATS REFRESH
+   LIVE STATS REFRESH
 ========================= */
 
-async function fetchLiveStats() {
-  try {
+async function fetchLiveStats(){
+  try{
     const shopId = "<%= shop.shopId %>";
     const res = await fetch(`${BASE_URL}/dashboard/stats/${shopId}`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
 
-    if (!res.ok) return;
+    if(!res.ok) return;
 
     const data = await res.json();
     document.getElementById("customersToday").innerText = data.customersToday;
     document.getElementById("pointsToday").innerText    = data.pointsToday;
 
-  } catch (err) {
+  }catch(err){
     console.log("Stats fetch error:", err);
   }
 }
+
 /* =========================
-GIVE POINTS + WHATSAPP
+   GIVE POINTS + WHATSAPP
 ========================= */
 
 async function givePoints(phone, queueId, customerName, btn){
@@ -469,12 +569,10 @@ async function givePoints(phone, queueId, customerName, btn){
 
     if(res.ok){
 
-      const earned  = data.pointsEarned;
-      const total   = data.totalPoints;
-      const spent   = amount;
+      const earned = data.pointsEarned;
+      const total  = data.totalPoints;
+      const spent  = amount;
 
-      // ✅ Show success + fallback WhatsApp button
-      // (in case browser blocked the auto popup)
       msg.innerHTML = `
         <span class="success">+${earned} pts ✓</span>
         <button
@@ -483,17 +581,19 @@ async function givePoints(phone, queueId, customerName, btn){
           📲 WhatsApp
         </button>`;
 
-      // ✅ Auto open WhatsApp immediately — no click needed
+      // Auto open WhatsApp
       sendWhatsApp(phone, customerName, earned, total, spent);
+
+      // Mark as processed so expiry detector ignores this phone
+      recentlyProcessed.add(phone);
 
       // Clear input and cache
       amountInput.value = "";
       delete inputCache[phone];
 
-      // Refresh queue after 1s
       setTimeout(fetchQueue, 1000);
 
-    } else {
+    }else{
       msg.innerHTML = `<span class='error'>${data.message || "Error"}</span>`;
     }
 
@@ -507,13 +607,74 @@ async function givePoints(phone, queueId, customerName, btn){
 }
 
 /* =========================
-AUTO REFRESH
+   REDEEM POINTS + WHATSAPP
 ========================= */
 
-fetchQueue(); 
+async function redeemPoints(phone, queueId, customerName, currentPoints, btn){
 
-fetchLiveStats();                              // ← initial load
-setInterval(fetchLiveStats, 30000);            // ← refresh every 30s
+  if(btn.disabled) return;
+
+  const confirmed = confirm(
+    `Redeem 100 points for ${customerName}?\nThey have ${currentPoints} pts. Remaining after: ${currentPoints - 100} pts.`
+  );
+  if(!confirmed) return;
+
+  btn.disabled = true;
+  btn.innerText = "...";
+
+  const shopId = "<%= shop.shopId %>";
+  const msg = document.getElementById(`redeem-msg-${phone}`);
+
+  try{
+
+    const res = await fetch(`${BASE_URL}/api/redeem`,{
+      method: "POST",
+      headers:{
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ phone, shopId, points: 100, queueId })
+    });
+
+    const data = await res.json();
+
+    if(res.ok){
+      msg.innerHTML = `<span class="success">Redeemed ✓</span>
+        <button class="wa-btn"
+          onclick="sendWhatsAppRedeem('${phone}',${JSON.stringify(customerName)},100,${data.remainingPoints})">
+          📲 WhatsApp
+        </button>`;
+
+      sendWhatsAppRedeem(phone, customerName, 100, data.remainingPoints);
+
+      // Mark as processed so expiry detector ignores this phone
+      recentlyProcessed.add(phone);
+
+      setTimeout(fetchQueue, 1000);
+
+    }else{
+      msg.innerHTML = `<span class="error">${data.message || "Error"}</span>`;
+      btn.disabled = false;
+      btn.innerText = "Redeem";
+    }
+
+  }catch(err){
+    console.error("Redeem error:", err);
+    msg.innerHTML = "<span class='error'>Server error</span>";
+    btn.disabled = false;
+    btn.innerText = "Redeem";
+  }
+}
+
+/* =========================
+   AUTO REFRESH
+========================= */
+
+fetchQueue();
+
+fetchLiveStats();
+setInterval(fetchLiveStats, 30000);
+
 setInterval(()=>{
   if(!document.hidden && !activeInputPhone){
     fetchQueue();
@@ -521,7 +682,7 @@ setInterval(()=>{
 }, 3000);
 
 /* =========================
-PWA INSTALL
+   PWA INSTALL
 ========================= */
 
 let deferredPrompt;
@@ -541,79 +702,13 @@ window.addEventListener("beforeinstallprompt",(e)=>{
 });
 
 /* =========================
-SERVICE WORKER
+   SERVICE WORKER
 ========================= */
 
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("/sw.js");
 }
-/* =========================
-REDEEM POINTS + WHATSAPP
-========================= */
 
-function sendWhatsAppRedeem(phone, customerName, pointsRedeemed, remainingPoints) {
-  const cleanPhone = String(phone).replace(/\D/g, "").replace(/^(91|0)/, "");
-
-  const message =
-    `Hi ${customerName}! 🎁\n\n` +
-    `Your reward has been redeemed at *${SHOP_NAME}*.\n\n` +
-    `✅ Points Redeemed: *${pointsRedeemed} pts*\n` +
-    `🏆 Remaining Points: *${remainingPoints} pts*\n\n` +
-    `Keep visiting to earn more rewards!\n` +
-    `– ${SHOP_NAME} via Keepl`;
-
-  const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
-  window.open(waUrl, "_blank");
-}
-
-async function redeemPoints(phone, queueId, customerName, currentPoints, btn) {
-  if (btn.disabled) return;
-
-  const confirmed = confirm(
-    `Redeem 100 points for ${customerName}?\nThey have ${currentPoints} pts. Remaining after: ${currentPoints - 100} pts.`
-  );
-  if (!confirmed) return;
-
-  btn.disabled = true;
-  btn.innerText = "...";
-
-  const shopId = "<%= shop.shopId %>";
-  const msg = document.getElementById(`redeem-msg-${phone}`);
-
-  try {
-    const res = await fetch(`${BASE_URL}/api/redeem`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ phone, shopId, points: 100, queueId })
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      msg.innerHTML = `<span class="success">Redeemed ✓</span>
-        <button class="wa-btn"
-          onclick="sendWhatsAppRedeem('${phone}',${JSON.stringify(customerName)},100,${data.remainingPoints})">
-          📲 WhatsApp
-        </button>`;
-
-      sendWhatsAppRedeem(phone, customerName, 100, data.remainingPoints);
-      setTimeout(fetchQueue, 1000);
-    } else {
-      msg.innerHTML = `<span class="error">${data.message || "Error"}</span>`;
-      btn.disabled = false;
-      btn.innerText = "Redeem";
-    }
-
-  } catch (err) {
-    console.error("Redeem error:", err);
-    msg.innerHTML = "<span class='error'>Server error</span>";
-    btn.disabled = false;
-    btn.innerText = "Redeem";
-  }
-}
 </script>
 
 </body>
