@@ -59,7 +59,7 @@ background:#e74c3c;
 background:#c0392b;
 }
 
-/* ✅ WhatsApp button style */
+/* WhatsApp button */
 .wa-btn{
 background:#25d366;
 color:white;
@@ -69,6 +69,9 @@ cursor:pointer;
 border-radius:6px;
 font-size:13px;
 margin-left:6px;
+display:inline-flex;
+align-items:center;
+gap:4px;
 }
 
 .wa-btn:hover{
@@ -159,6 +162,7 @@ display:none;
 body{ padding:15px; }
 .statBox{ min-width:100%; }
 table{ font-size:13px; }
+input[type="number"]{ width:90px; }
 }
 </style>
 
@@ -214,7 +218,7 @@ table{ font-size:13px; }
 <p style="color:#e74c3c;">QR not generated. Please logout and login again.</p>
 <% } %>
 
-<p>Customers scan this QR to earn rewards</p>
+<p style="margin-top:10px;">Customers scan this QR to earn rewards</p>
 </div>
 
 <script>
@@ -225,8 +229,6 @@ SESSION CHECK
 const BASE_URL = "https://keepl.onrender.com";
 const token = localStorage.getItem("token");
 const shopIdLocal = localStorage.getItem("shopId");
-
-// ✅ Pass shop name from EJS to JS for WhatsApp message
 const SHOP_NAME = "<%= shop.name %>";
 
 if(!token || !shopIdLocal){
@@ -234,12 +236,12 @@ if(!token || !shopIdLocal){
 }
 
 /* =========================
-STATE MANAGEMENT
+STATE
 ========================= */
 
 let isFetching = false;
-let activeInputPhone = null;
-let inputCache = {};
+let activeInputPhone = null; // which input is focused
+let inputCache = {};         // saves typed amounts across re-renders
 
 /* =========================
 LOGOUT
@@ -263,31 +265,32 @@ function safe(text){
 }
 
 /* =========================
-WHATSAPP MESSAGE SENDER
+WHATSAPP
+✅ Auto-opens immediately after
+   points are given — no extra click
+✅ Also shown as fallback button
+   in case popup was blocked
 ========================= */
+
 function sendWhatsApp(phone, customerName, pointsEarned, totalPoints, amountSpent){
+
+  // Strip any prefix and add India code 91
+  const cleanPhone = String(phone).replace(/\D/g,"").replace(/^(91|0)/,"");
 
   const message =
     `Hi ${customerName}! 🎉\n\n` +
     `Thank you for visiting *${SHOP_NAME}*.\n\n` +
     `🧾 Amount Spent: ₹${amountSpent}\n` +
-    `⭐ Points Earned: ${pointsEarned} pts\n` +
-    `🏆 Total Points: ${totalPoints} pts\n\n` +
-    `🎁 Collect 100 points to redeem exciting rewards!\n\n` +
-    `See you again soon 😊\n\n` +
+    `⭐ Points Earned: *${pointsEarned} pts*\n` +
+    `🏆 Total Points: *${totalPoints} pts*\n\n` +
+    `🎁 Collect *100 points* to redeem exciting rewards!\n\n` +
+    `See you again soon 😊\n` +
     `– ${SHOP_NAME} via Keepl`;
 
-  // ✅ Clean Indian number
-  const cleanPhone = phone.replace(/^(\+91|91|0)/, "");
+  const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
 
-  // ✅ Direct WhatsApp redirect
-  const waUrl =
-    `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
-
-  // ✅ Open instantly
   window.open(waUrl, "_blank");
 }
-
 
 /* =========================
 FETCH QUEUE
@@ -296,6 +299,8 @@ FETCH QUEUE
 async function fetchQueue(){
 
   if(isFetching) return;
+
+  // Don't re-render while shopkeeper is typing
   if(activeInputPhone) return;
 
   isFetching = true;
@@ -305,9 +310,7 @@ async function fetchQueue(){
     const shopId = "<%= shop.shopId %>";
 
     const res = await fetch(`${BASE_URL}/api/queue/${shopId}`, {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
+      headers: { "Authorization": `Bearer ${token}` }
     });
 
     if(res.status === 401){
@@ -316,9 +319,7 @@ async function fetchQueue(){
       return;
     }
 
-    if(!res.ok){
-      throw new Error("Failed");
-    }
+    if(!res.ok) throw new Error("Failed");
 
     const data = await res.json();
 
@@ -328,16 +329,10 @@ async function fetchQueue(){
     if(!data.length){
       table.innerHTML = `
       <tr>
-        <th>Name</th>
-        <th>Phone</th>
-        <th>Visits</th>
-        <th>Total Spent</th>
-        <th>Points</th>
-        <th>Action</th>
+        <th>Name</th><th>Phone</th><th>Visits</th>
+        <th>Total Spent</th><th>Points</th><th>Action</th>
       </tr>
-      <tr>
-        <td colspan="6" class="empty">No customers in queue</td>
-      </tr>`;
+      <tr><td colspan="6" class="empty">No customers in queue</td></tr>`;
       waiting.innerText = 0;
       return;
     }
@@ -348,6 +343,7 @@ async function fetchQueue(){
 
     data.forEach(customer => {
 
+      // Restore typed amount from cache across re-renders
       const savedValue = inputCache[customer.phone] || "";
 
       rows += `
@@ -363,13 +359,17 @@ async function fetchQueue(){
             id="amount-${customer.phone}"
             placeholder="Amount"
             value="${savedValue}"
+            min="1"
             onfocus="activeInputPhone='${customer.phone}'"
             onblur="activeInputPhone=null"
             oninput="inputCache['${customer.phone}']=this.value"
           >
-          <button onclick="givePoints('${customer.phone}', '${customer.queueId}', '${safe(customer.name)}', this)">
-            Give
-          </button>
+          <button onclick="givePoints(
+            '${customer.phone}',
+            '${customer.queueId}',
+            ${JSON.stringify(customer.name)},
+            this
+          )">Give</button>
           <div id="msg-${customer.phone}"></div>
         </td>
       </tr>`;
@@ -377,24 +377,20 @@ async function fetchQueue(){
 
     table.innerHTML = `
     <tr>
-      <th>Name</th>
-      <th>Phone</th>
-      <th>Visits</th>
-      <th>Total Spent</th>
-      <th>Points</th>
-      <th>Action</th>
+      <th>Name</th><th>Phone</th><th>Visits</th>
+      <th>Total Spent</th><th>Points</th><th>Action</th>
     </tr>
     ${rows}`;
 
   }catch(err){
-    console.log(err);
+    console.log("Queue fetch error:", err);
   }finally{
     isFetching = false;
   }
 }
 
 /* =========================
-ADD POINTS + WHATSAPP
+GIVE POINTS + WHATSAPP
 ========================= */
 
 async function givePoints(phone, queueId, customerName, btn){
@@ -402,11 +398,11 @@ async function givePoints(phone, queueId, customerName, btn){
   if(btn.disabled) return;
 
   const amountInput = document.getElementById(`amount-${phone}`);
-  const amount = amountInput.value;
+  const amount = amountInput?.value;
   const msg = document.getElementById(`msg-${phone}`);
 
   if(!amount || amount <= 0){
-    msg.innerHTML="<span class='error'>Enter amount</span>";
+    msg.innerHTML = "<span class='error'>Enter a valid amount</span>";
     return;
   }
 
@@ -418,39 +414,54 @@ async function givePoints(phone, queueId, customerName, btn){
   try{
 
     const res = await fetch(`${BASE_URL}/api/transactions`,{
-      method:"POST",
+      method: "POST",
       headers:{
-        "Content-Type":"application/json",
+        "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ phone, shopId, billAmount: amount, queueId })
+      body: JSON.stringify({
+        phone,
+        shopId,
+        billAmount: Number(amount),
+        queueId
+      })
     });
 
     const data = await res.json();
 
     if(res.ok){
 
-      // ✅ Show success + WhatsApp button
+      const earned  = data.pointsEarned;
+      const total   = data.totalPoints;
+      const spent   = amount;
+
+      // ✅ Show success + fallback WhatsApp button
+      // (in case browser blocked the auto popup)
       msg.innerHTML = `
-        <span class="success">+${data.pointsEarned} pts ✓</span>
+        <span class="success">+${earned} pts ✓</span>
         <button
           class="wa-btn"
-          onclick="sendWhatsApp('${phone}', '${customerName}', ${data.pointsEarned}, ${data.totalPoints})">
+          onclick="sendWhatsApp('${phone}',${JSON.stringify(customerName)},${earned},${total},${spent})">
           📲 WhatsApp
         </button>`;
 
-      // ✅ Clear input cache
-      delete inputCache[phone];
-      amountInput.value = "";
+      // ✅ Auto open WhatsApp immediately — no click needed
+      sendWhatsApp(phone, customerName, earned, total, spent);
 
+      // Clear input and cache
+      amountInput.value = "";
+      delete inputCache[phone];
+
+      // Refresh queue after 1s
       setTimeout(fetchQueue, 1000);
 
     } else {
-      msg.innerHTML=`<span class='error'>${data.message || "Error"}</span>`;
+      msg.innerHTML = `<span class='error'>${data.message || "Error"}</span>`;
     }
 
-  }catch{
-    msg.innerHTML="<span class='error'>Error</span>";
+  }catch(err){
+    console.error("Give points error:", err);
+    msg.innerHTML = "<span class='error'>Server error</span>";
   }
 
   btn.disabled = false;
@@ -467,7 +478,7 @@ setInterval(()=>{
   if(!document.hidden && !activeInputPhone){
     fetchQueue();
   }
-},3000);
+}, 3000);
 
 /* =========================
 PWA INSTALL
@@ -480,14 +491,12 @@ window.addEventListener("beforeinstallprompt",(e)=>{
   deferredPrompt = e;
 
   const btn = document.getElementById("installBtn");
-  btn.style.display="inline-block";
+  btn.style.display = "inline-block";
 
   btn.onclick = async ()=>{
     deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
-    if(choice.outcome==="accepted"){
-      btn.style.display="none";
-    }
+    if(choice.outcome === "accepted") btn.style.display = "none";
   };
 });
 
