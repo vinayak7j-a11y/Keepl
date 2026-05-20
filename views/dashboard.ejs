@@ -185,14 +185,16 @@ input[type="number"]{ width:90px; }
 </div>
 
 <div class="stats">
+<!-- Customers Today -->
 <div class="statBox">
-<h3>Customers Today</h3>
-<p><%= customersToday %></p>
+  <h3>Customers Today</h3>
+  <p id="customersToday"><%= customersToday %></p>
 </div>
 
+<!-- Points Given Today -->
 <div class="statBox">
-<h3>Points Given Today</h3>
-<p><%= pointsToday %></p>
+  <h3>Points Given Today</h3>
+  <p id="pointsToday"><%= pointsToday %></p>
 </div>
 
 <div class="statBox">
@@ -329,10 +331,10 @@ async function fetchQueue(){
     if(!data.length){
       table.innerHTML = `
       <tr>
-        <th>Name</th><th>Phone</th><th>Visits</th>
-        <th>Total Spent</th><th>Points</th><th>Action</th>
-      </tr>
-      <tr><td colspan="6" class="empty">No customers in queue</td></tr>`;
+  <th>Name</th><th>Phone</th><th>Visits</th>
+  <th>Total Spent</th><th>Points</th><th>Action</th><th>Redeem</th>
+</tr>
+      <tr><td colspan="7" class="empty">No customers in queue</td></tr>`;
       waiting.innerText = 0;
       return;
     }
@@ -370,7 +372,22 @@ async function fetchQueue(){
             ${JSON.stringify(customer.name)},
             this
           )">Give</button>
-          <div id="msg-${customer.phone}"></div>
+          <div id="msg-${customer.phone}"></div> 
+          </td>
+        <td>
+          ${customer.points >= 100
+            ? `<button
+                style="background:#e67e22;"
+                onclick="redeemPoints(
+                  '${customer.phone}',
+                  '${customer.queueId}',
+                  ${JSON.stringify(customer.name)},
+                  ${customer.points},
+                  this
+                )">Redeem</button>
+               <div id="redeem-msg-${customer.phone}"></div>`
+            : `<span style="color:#aaa;font-size:12px;">${customer.points}/100</span>`
+          }
         </td>
       </tr>`;
     });
@@ -378,7 +395,7 @@ async function fetchQueue(){
     table.innerHTML = `
     <tr>
       <th>Name</th><th>Phone</th><th>Visits</th>
-      <th>Total Spent</th><th>Points</th><th>Action</th>
+      <th>Total Spent</th><th>Points</th><th>Action</th><th>Redeem</th>
     </tr>
     ${rows}`;
 
@@ -389,6 +406,27 @@ async function fetchQueue(){
   }
 }
 
+/* =========================
+LIVE STATS REFRESH
+========================= */
+
+async function fetchLiveStats() {
+  try {
+    const shopId = "<%= shop.shopId %>";
+    const res = await fetch(`${BASE_URL}/dashboard/stats/${shopId}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (!res.ok) return;
+
+    const data = await res.json();
+    document.getElementById("customersToday").innerText = data.customersToday;
+    document.getElementById("pointsToday").innerText    = data.pointsToday;
+
+  } catch (err) {
+    console.log("Stats fetch error:", err);
+  }
+}
 /* =========================
 GIVE POINTS + WHATSAPP
 ========================= */
@@ -472,8 +510,10 @@ async function givePoints(phone, queueId, customerName, btn){
 AUTO REFRESH
 ========================= */
 
-fetchQueue();
+fetchQueue(); 
 
+fetchLiveStats();                              // ← initial load
+setInterval(fetchLiveStats, 30000);            // ← refresh every 30s
 setInterval(()=>{
   if(!document.hidden && !activeInputPhone){
     fetchQueue();
@@ -507,7 +547,73 @@ SERVICE WORKER
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("/sw.js");
 }
+/* =========================
+REDEEM POINTS + WHATSAPP
+========================= */
 
+function sendWhatsAppRedeem(phone, customerName, pointsRedeemed, remainingPoints) {
+  const cleanPhone = String(phone).replace(/\D/g, "").replace(/^(91|0)/, "");
+
+  const message =
+    `Hi ${customerName}! 🎁\n\n` +
+    `Your reward has been redeemed at *${SHOP_NAME}*.\n\n` +
+    `✅ Points Redeemed: *${pointsRedeemed} pts*\n` +
+    `🏆 Remaining Points: *${remainingPoints} pts*\n\n` +
+    `Keep visiting to earn more rewards!\n` +
+    `– ${SHOP_NAME} via Keepl`;
+
+  const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
+  window.open(waUrl, "_blank");
+}
+
+async function redeemPoints(phone, queueId, customerName, currentPoints, btn) {
+  if (btn.disabled) return;
+
+  const confirmed = confirm(
+    `Redeem 100 points for ${customerName}?\nThey have ${currentPoints} pts. Remaining after: ${currentPoints - 100} pts.`
+  );
+  if (!confirmed) return;
+
+  btn.disabled = true;
+  btn.innerText = "...";
+
+  const shopId = "<%= shop.shopId %>";
+  const msg = document.getElementById(`redeem-msg-${phone}`);
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/redeem`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ phone, shopId, points: 100, queueId })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      msg.innerHTML = `<span class="success">Redeemed ✓</span>
+        <button class="wa-btn"
+          onclick="sendWhatsAppRedeem('${phone}',${JSON.stringify(customerName)},100,${data.remainingPoints})">
+          📲 WhatsApp
+        </button>`;
+
+      sendWhatsAppRedeem(phone, customerName, 100, data.remainingPoints);
+      setTimeout(fetchQueue, 1000);
+    } else {
+      msg.innerHTML = `<span class="error">${data.message || "Error"}</span>`;
+      btn.disabled = false;
+      btn.innerText = "Redeem";
+    }
+
+  } catch (err) {
+    console.error("Redeem error:", err);
+    msg.innerHTML = "<span class='error'>Server error</span>";
+    btn.disabled = false;
+    btn.innerText = "Redeem";
+  }
+}
 </script>
 
 </body>

@@ -108,7 +108,46 @@ const getDashboard = async (req, res) => {
     console.error("Dashboard error:", error);
     res.status(500).send("Dashboard error");
   }
-}; 
-module.exports = {
-  getDashboard
 };
+
+// ✅ REMOVED premature module.exports that was here
+
+/* =========================
+   LIVE STATS API
+========================= */
+
+const getLiveStats = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+
+    const shop = await Shop.findOne({ shopId }).lean();
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayTransactions = await Transaction.find({
+      shopId: shop._id,
+      type: "earn",                    // only earn transactions count
+      createdAt: { $gte: today }
+    }).lean();
+
+    const customersToday = todayTransactions.length;
+    const pointsToday = todayTransactions.reduce(
+      (sum, t) => sum + (t.points || 0), 0
+    );
+
+    res.json({ customersToday, pointsToday });
+
+  } catch (error) {
+    console.error("Live stats error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ✅ Single export at the bottom — exports both functions
+module.exports = {
+  getDashboard,
+  getLiveStats
+}; 
+
