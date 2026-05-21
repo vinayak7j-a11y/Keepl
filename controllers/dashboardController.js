@@ -29,7 +29,7 @@ const getDashboard = async (req, res) => {
     const queue = await CustomerQueue.find({
       shopId: shop._id,
       status: "waiting",
-      expiresAt: { $gt: now } // ✅ remove expired
+      expiresAt: { $gt: now }
     })
       .sort({ createdAt: 1 })
       .limit(50)
@@ -71,7 +71,7 @@ const getDashboard = async (req, res) => {
         : null;
 
       return {
-        queueId: q._id, // ✅ IMPORTANT (needed later)
+        queueId: q._id,
         name: q.name,
         phone: q.phone,
         visits: user?.totalVisits || 0,
@@ -110,7 +110,34 @@ const getDashboard = async (req, res) => {
   }
 };
 
-// ✅ REMOVED premature module.exports that was here
+
+/* =========================
+   CUSTOMERS PAGE
+========================= */
+
+const getCustomersPage = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+
+    if (!shopId) {
+      return res.status(400).send("Invalid shop");
+    }
+
+    // Verify shop exists — auth is handled by middleware, just need shop for EJS
+    const shop = await Shop.findOne({ shopId }).lean();
+
+    if (!shop) {
+      return res.status(404).send("Shop not found");
+    }
+
+    res.render("customers", { shop });
+
+  } catch (error) {
+    console.error("Customers page error:", error);
+    res.status(500).send("Server error");
+  }
+};
+
 
 /* =========================
    LIVE STATS API
@@ -128,7 +155,7 @@ const getLiveStats = async (req, res) => {
 
     const todayTransactions = await Transaction.find({
       shopId: shop._id,
-      type: "earn",                    // only earn transactions count
+      type: "earn",
       createdAt: { $gte: today }
     }).lean();
 
@@ -145,9 +172,9 @@ const getLiveStats = async (req, res) => {
   }
 };
 
-// ✅ Single export at the bottom — exports both functions
+
 module.exports = {
   getDashboard,
+  getCustomersPage,
   getLiveStats
-}; 
-
+};

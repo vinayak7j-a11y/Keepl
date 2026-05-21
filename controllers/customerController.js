@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const Shop = require("../models/Shop");
 const CustomerQueue = require("../models/CustomerQueue");
+const Transaction = require("../models/Transaction");
 
 /* =========================
    CAPTURE CUSTOMER
@@ -153,7 +154,6 @@ const getWallet = async (req, res) => {
     const user = await User.findOne({ phone }).lean();
 
     if (!user) {
-      // customer not found yet — return 0 points safely
       return res.json({ points: 0, totalEarned: 0 });
     }
 
@@ -177,6 +177,7 @@ const getWallet = async (req, res) => {
 
 /* =========================
    GET ALL CUSTOMERS FOR SHOP
+   — includes redeem history
 ========================= */
 
 const getShopCustomers = async (req, res) => {
@@ -189,29 +190,55 @@ const getShopCustomers = async (req, res) => {
       return res.status(404).json({ message: "Shop not found" });
     }
 
+    // 1. All wallets for this shop
     const wallets = await Wallet.find({ shopId: shop._id }).lean();
-
     const userIds = wallets.map(w => w.userId);
 
+    // 2. All users
     const users = await User.find({ _id: { $in: userIds } }).lean();
-
     const userMap = {};
     users.forEach(u => { userMap[u._id.toString()] = u; });
 
+    // 3. All redeem transactions for this shop, grouped by userId
+    const redeemTxns = await Transaction.find({
+      shopId: shop._id,
+      type: "redeem"
+    })
+      .select("userId createdAt points")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Group redeem transactions by userId
+    const redeemMap = {};
+    redeemTxns.forEach(t => {
+      const key = t.userId.toString();
+      if (!redeemMap[key]) redeemMap[key] = [];
+      redeemMap[key].push({
+        date: t.createdAt,
+        points: t.points
+      });
+    });
+
+    // 4. Build customer list
     const customers = wallets.map(w => {
       const user = userMap[w.userId.toString()];
+      const redeemHistory = redeemMap[w.userId.toString()] || [];
+
       return {
         name: user?.name || "Unknown",
         phone: user?.phone || "",
         points: w.points || 0,
         totalEarned: w.totalEarned || 0,
+        totalRedeemed: w.totalRedeemed || 0,
         visits: user?.totalVisits || 0,
         totalSpent: user?.totalSpent || 0,
-        lastVisit: user?.lastVisit || null
+        lastVisit: user?.lastVisit || null,
+        redeemCount: redeemHistory.length,
+        redeemHistory                          // array of { date, points }
       };
     });
 
-    // sort by points descending
+    // Sort by points descending
     customers.sort((a, b) => b.points - a.points);
 
     res.json(customers);
