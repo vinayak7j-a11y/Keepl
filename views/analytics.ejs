@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Analytics — Keepl</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;background:#f4f6fa;min-height:100vh;padding:24px 16px;color:#2d3436}
+  .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+  .top-bar h1{font-size:20px;font-weight:600}
+  .back{font-size:14px;color:#667eea;text-decoration:none;margin-right:12px}
+  .toggle{display:flex;background:white;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden}
+  .toggle button{padding:7px 20px;font-size:13px;border:none;background:transparent;cursor:pointer;color:#636e72;transition:background 0.15s}
+  .toggle button.active{background:#667eea;color:white;font-weight:600}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+  .stat{background:white;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+  .stat .label{font-size:12px;color:#888;margin-bottom:6px}
+  .stat .value{font-size:22px;font-weight:700;color:#2d3436}
+  .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px}
+  .card{background:white;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+  .card h3{font-size:14px;font-weight:600;color:#636e72;margin-bottom:16px}
+  .bottom{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+  .donut-wrap{display:flex;align-items:center;gap:24px}
+  .legend{display:flex;flex-direction:column;gap:10px}
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:13px;color:#444}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .top-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+  .top-row:last-child{border-bottom:none}
+  .top-name{font-weight:600;color:#2d3436}
+  .top-meta{color:#888}
+  .loading{opacity:0.4;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div style="display:flex;align-items:center">
+    <a class="back" href="/dashboard/<%= shopId %>">← Dashboard</a>
+    <h1>Analytics</h1>
+  </div>
+  <div class="toggle">
+    <button class="active" onclick="load(7,this)">7 days</button>
+    <button onclick="load(30,this)">30 days</button>
+  </div>
+</div>
+
+<div class="stat-grid" id="statGrid">
+  <div class="stat"><div class="label">Total revenue</div><div class="value" id="s-rev">—</div></div>
+  <div class="stat"><div class="label">Points issued</div><div class="value" id="s-pts">—</div></div>
+  <div class="stat"><div class="label">Repeat customers</div><div class="value" id="s-rep">—</div></div>
+  <div class="stat"><div class="label">Avg bill</div><div class="value" id="s-avg">—</div></div>
+</div>
+
+<div class="charts">
+  <div class="card">
+    <h3>Revenue per day (₹)</h3>
+    <canvas id="revenueChart" height="160"></canvas>
+  </div>
+  <div class="card">
+    <h3>Points issued per day</h3>
+    <canvas id="pointsChart" height="160"></canvas>
+  </div>
+</div>
+
+<div class="bottom">
+  <div class="card">
+    <h3>Customer breakdown</h3>
+    <div class="donut-wrap">
+      <canvas id="donutChart" width="110" height="110"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:#667eea"></div><span id="repeatLbl">Repeat</span></div>
+        <div class="legend-item"><div class="dot" style="background:#dfe6e9"></div><span id="newLbl">New</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Top customers</h3>
+    <div id="topList"></div>
+  </div>
+</div>
+
+<script>
+  const shopId = "<%= shopId %>";
+  let revChart, ptsChart, donutChart;
+
+  const baseOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: "#999" } },
+      y: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { font: { size: 11 }, color: "#999" } }
+    }
+  };
+
+  async function load(range, btn) {
+    document.querySelectorAll('.toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const res = await fetch(`/api/analytics/${shopId}?range=${range}`);
+    const d = await res.json();
+
+    // Stat cards
+    document.getElementById('s-rev').textContent = '₹' + d.stats.totalRevenue.toLocaleString('en-IN');
+    document.getElementById('s-pts').textContent = d.stats.totalPoints.toLocaleString('en-IN');
+    document.getElementById('s-rep').textContent = d.stats.repeatPct + '%';
+    document.getElementById('s-avg').textContent = '₹' + d.stats.avgBill.toLocaleString('en-IN');
+
+    // Revenue chart
+    if (revChart) revChart.destroy();
+    revChart = new Chart(document.getElementById('revenueChart'), {
+      type: 'line',
+      data: {
+        labels: d.labels,
+        datasets: [{
+          data: d.revenue,
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102,126,234,0.08)',
+          fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#667eea'
+        }]
+      },
+      options: { ...baseOpts, maintainAspectRatio: false }
+    });
+
+    // Points chart
+    if (ptsChart) ptsChart.destroy();
+    ptsChart = new Chart(document.getElementById('pointsChart'), {
+      type: 'bar',
+      data: {
+        labels: d.labels,
+        datasets: [{
+          data: d.points,
+          backgroundColor: 'rgba(102,126,234,0.65)',
+          borderRadius: 4
+        }]
+      },
+      options: { ...baseOpts, maintainAspectRatio: false }
+    });
+
+    // Donut
+    const repeat = d.stats.repeatPct;
+    const newC = 100 - repeat;
+    if (donutChart) donutChart.destroy();
+    donutChart = new Chart(document.getElementById('donutChart'), {
+      type: 'doughnut',
+      data: {
+        datasets: [{
+          data: [repeat, newC],
+          backgroundColor: ['#667eea', '#dfe6e9'],
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      },
+      options: { cutout: '70%', plugins: { legend: { display: false } }, responsive: false }
+    });
+    document.getElementById('repeatLbl').textContent = `Repeat — ${repeat}%`;
+    document.getElementById('newLbl').textContent = `New — ${newC}%`;
+
+    // Top customers
+    document.getElementById('topList').innerHTML = d.topCustomers.map(c => `
+      <div class="top-row">
+        <div>
+          <div class="top-name">${c.name}</div>
+          <div class="top-meta">${c.phone}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:600;color:#667eea">${c.points} pts</div>
+          <div class="top-meta">₹${c.totalEarned.toLocaleString('en-IN')} earned</div>
+        </div>
+      </div>`).join('');
+  }
+
+  load(7, document.querySelector('.toggle button'));
+</script>
+</body>
+</html>

@@ -12,7 +12,8 @@ const app = express();
    ROUTE IMPORTS
 ========================= */
 
-const shopRoutes = require("./routes/shopRoutes"); 
+const authMiddleware = require("./middleware/authMiddleware");
+const shopRoutes = require("./routes/shopRoutes");
 console.log("🔥 server imported shopRoutes");
 const scanRoutes = require("./routes/scanRoutes");
 const customerRoutes = require("./routes/customerRoutes");
@@ -22,6 +23,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const queueRoutes = require("./routes/queueRoutes");
 const posterRoutes = require("./routes/posterRoutes");
 const shopPageRoutes = require("./routes/shopPageRoutes");
+const analyticsRoutes = require("./routes/analyticsRoutes");
 
 /* =========================
    APP SETTINGS
@@ -68,10 +70,10 @@ app.get("/", (req, res) => {
    API ROUTES (MUST BE FIRST)
 ========================= */
 
-app.use("/api/shops", shopRoutes); 
+app.use("/api/shops", shopRoutes);
 console.log("🔥 /api/shops mounted");
 app.use("/api/customers", customerRoutes);
-app.use("/api/transactions", transactionRoutes); 
+app.use("/api/transactions", transactionRoutes);
 app.get("/debug-routes", (req, res) => {
   res.json({
     transactionsLoaded: !!transactionRoutes,
@@ -80,6 +82,7 @@ app.get("/debug-routes", (req, res) => {
 });
 app.use("/api/redeem", redeemRoutes);
 app.use("/api/queue", queueRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 /* =========================
    PAGE ROUTES (UI)
@@ -88,6 +91,9 @@ app.use("/api/queue", queueRoutes);
 app.use("/shop", shopPageRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/poster", posterRoutes);
+app.get("/analytics/:shopId", authMiddleware, (req, res) => {
+  res.render("analytics", { shopId: req.params.shopId });
+});
 
 /* =========================
    SCAN ROUTES (MUST BE LAST)
@@ -123,7 +129,6 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error("Server error:", err);
-
   res.status(500).json({
     message: err.message || "Internal server error"
   });
