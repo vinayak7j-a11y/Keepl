@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const QRCode = require("qrcode"); // ✅ QR generation
+const QRCode = require("qrcode");
 const Shop = require("../models/Shop");
 
 /* =========================
@@ -48,7 +48,7 @@ exports.registerShop = async (req, res) => {
       phone,
       password: hashedPassword,
       shopId,
-      qrCode // ✅ save QR to DB
+      qrCode
     });
 
     res.json({
@@ -136,5 +136,45 @@ exports.loginShop = async (req, res) => {
     res.status(500).json({
       message: "Server error"
     });
+  }
+};
+
+
+/* =========================
+   UPDATE REWARD THRESHOLD
+   PATCH /api/shops/:shopId/reward-threshold
+========================= */
+
+exports.updateRewardThreshold = async (req, res) => {
+  try {
+
+    const { shopId } = req.params;
+    const { rewardThreshold } = req.body;
+
+    // Auth check — shopId from JWT must match param
+    if (req.shopId !== shopId) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    if (!rewardThreshold || isNaN(rewardThreshold)) {
+      return res.status(400).json({ message: "Invalid threshold value" });
+    }
+
+    const value = parseInt(rewardThreshold);
+
+    if (value < 10) {
+      return res.status(400).json({ message: "Threshold must be at least 10 points" });
+    }
+
+    await Shop.updateOne({ shopId }, { rewardThreshold: value });
+
+    res.json({
+      message: "Reward threshold updated",
+      rewardThreshold: value
+    });
+
+  } catch (error) {
+    console.error("Update threshold error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };

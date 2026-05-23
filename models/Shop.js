@@ -54,6 +54,13 @@ const shopSchema = new mongoose.Schema({
     min: 0
   },
 
+  // ✅ How many points needed to redeem a free reward (per-shop configurable)
+  rewardThreshold: {
+    type: Number,
+    default: 100,
+    min: 10
+  },
+
   isActive: {
     type: Boolean,
     default: true

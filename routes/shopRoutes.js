@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const shopController = require("../controllers/shopController");
+const authMiddleware = require("../middleware/authMiddleware");
 
 /* =========================
    DEBUG + VALIDATION
@@ -37,5 +38,8 @@ router.post("/login", (req, res, next) => {
   console.log("🔥 LOGIN ROUTE HIT");
   next();
 }, shopController.loginShop);
+
+// ✅ Update reward threshold
+router.patch("/:shopId/reward-threshold", authMiddleware, shopController.updateRewardThreshold);
 
 module.exports = router;
