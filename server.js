@@ -66,6 +66,16 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
+// ✅ Clean login route (register.html links here)
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+// ✅ Clean register route (login.html links here)
+app.get("/register", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "register.html"));
+});
+
 /* =========================
    API ROUTES (MUST BE FIRST)
 ========================= */
