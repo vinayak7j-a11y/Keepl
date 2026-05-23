@@ -20,7 +20,6 @@ router.get("/thankyou", async (req, res) => {
   try {
     const { name, phone, shopId } = req.query;
 
-    // ✅ DEBUG
     console.log("🎯 THANKYOU ROUTE HIT:", { name, phone, shopId });
 
     if (!name || !phone || !shopId) {
@@ -28,13 +27,16 @@ router.get("/thankyou", async (req, res) => {
       return res.redirect("/");
     }
 
-    const shop = await Shop.findOne({ shopId }).select("name").lean();
+    // ✅ Fetch rewardThreshold alongside shop name
+    const shop = await Shop.findOne({ shopId }).select("name rewardThreshold").lean();
 
     console.log("🏪 Shop lookup result:", shop);
 
     if (!shop) {
       return res.status(404).send("Shop not found");
     }
+
+    const rewardThreshold = shop.rewardThreshold || 100;
 
     const safeShopName = String(shop.name)
       .replace(/&/g, "&amp;")
@@ -51,84 +53,290 @@ router.get("/thankyou", async (req, res) => {
 <head>
 <title>Welcome to ${safeShopName}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --k-saffron:    #FF6B00;
+    --k-saffron-lt: #FFF0E6;
+    --k-saffron-dk: #C24E00;
+    --k-teal:       #00796B;
+    --k-teal-lt:    #E0F2F0;
+    --k-teal-dk:    #004D40;
+    --k-ink:        #1A1A2E;
+    --k-ink-secondary: #4A4A6A;
+    --k-ink-tertiary:  #9090A8;
+    --k-bg:         #F7F6F2;
+    --k-border:     #E8E6DF;
+    --k-surface:    #FFFFFF;
+  }
+
   body {
     font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--k-bg);
     min-height: 100vh;
-    display: flex; justify-content: center; align-items: center; padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
   }
+
   .card {
-    background: white; border-radius: 20px; padding: 40px 30px;
-    width: 100%; max-width: 380px; text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    background: var(--k-surface);
+    border: 0.5px solid var(--k-border);
+    border-radius: 24px;
+    padding: 36px 28px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+    box-shadow: 0 8px 40px rgba(26,26,46,0.10);
   }
+
+  /* ── Logo ── */
+  .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--k-saffron);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+  }
+  .logo-text {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--k-ink);
+    letter-spacing: -0.5px;
+  }
+  .logo-text span { color: var(--k-saffron); }
+
+  /* ── Check icon ── */
   .checkmark {
-    width: 80px; height: 80px; background: #2ecc71; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 20px; font-size: 40px; color: white;
+    width: 72px;
+    height: 72px;
+    background: var(--k-teal-lt);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 32px;
+    color: var(--k-teal);
   }
-  h2 { font-size: 24px; color: #2d3436; margin-bottom: 8px; }
-  .subtitle { color: #636e72; font-size: 15px; margin-bottom: 30px; }
+
+  h2 {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--k-ink);
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    color: var(--k-ink-tertiary);
+    font-size: 14px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  /* ── Points box ── */
   .points-box {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    border-radius: 15px; padding: 20px; color: white; margin-bottom: 20px;
+    background: var(--k-saffron);
+    border-radius: 18px;
+    padding: 22px 20px;
+    color: white;
+    margin-bottom: 16px;
     transition: transform 0.3s;
   }
+
   .points-box.updated { transform: scale(1.04); }
-  .label { font-size: 13px; opacity: 0.85; margin-bottom: 5px; }
-  .points { font-size: 48px; font-weight: bold; line-height: 1; }
-  .unit { font-size: 14px; opacity: 0.85; margin-top: 4px; }
-  .status {
-    font-size: 13px; color: #888; margin-bottom: 20px;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
+
+  .label {
+    font-size: 12px;
+    opacity: 0.85;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
+
+  .points {
+    font-size: 56px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .unit {
+    font-size: 14px;
+    opacity: 0.8;
+    margin-top: 4px;
+  }
+
+  /* ── Status dot ── */
+  .status {
+    font-size: 13px;
+    color: var(--k-ink-tertiary);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+
   .dot {
-    width: 8px; height: 8px; border-radius: 50%; background: #2ecc71;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--k-teal);
     animation: pulse 1.5s ease-in-out infinite;
   }
+
   @keyframes pulse {
     0%,100% { opacity:1; transform:scale(1); }
-    50% { opacity:0.5; transform:scale(0.8); }
+    50% { opacity:0.4; transform:scale(0.75); }
   }
+
+  /* ── Progress bar ── */
+  .progress-section {
+    margin-bottom: 18px;
+    text-align: left;
+  }
+
+  .progress-label {
+    font-size: 13px;
+    color: var(--k-ink-secondary);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .progress-track {
+    background: #EDECE8;
+    border-radius: 50px;
+    height: 10px;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 50px;
+    background: linear-gradient(90deg, var(--k-saffron), #FF9500);
+    transition: width 0.5s ease;
+    width: 0%;
+  }
+
+  .progress-fill.complete {
+    background: linear-gradient(90deg, var(--k-teal), #10B981);
+  }
+
+  /* ── Info box ── */
   .info {
-    background: #f8f9fa; border-radius: 10px; padding: 15px;
-    font-size: 14px; color: #555; margin-bottom: 20px; line-height: 1.8;
+    background: var(--k-bg);
+    border: 0.5px solid var(--k-border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: var(--k-ink-secondary);
+    margin-bottom: 16px;
+    line-height: 2;
+    text-align: left;
   }
+
+  /* ── Redeem banner ── */
   .redeem-banner {
-    background: #fff3cd; border-radius: 10px; padding: 12px;
-    font-size: 14px; color: #856404; margin-bottom: 20px; display: none;
+    background: var(--k-teal-lt);
+    border: 0.5px solid #6EE7B7;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: var(--k-teal-dk);
+    font-weight: 500;
+    margin-bottom: 16px;
+    display: none;
+    text-align: left;
   }
-  .footer { font-size: 12px; color: #b2bec3; }
+
+  .footer {
+    font-size: 12px;
+    color: var(--k-ink-tertiary);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .footer-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--k-ink-tertiary); }
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="checkmark">✓</div>
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-icon"><i class="ti ti-bolt"></i></div>
+    <div class="logo-text">keep<span>l</span></div>
+  </div>
+
+  <!-- Check -->
+  <div class="checkmark">
+    <i class="ti ti-check"></i>
+  </div>
+
   <h2>Welcome, ${safeName}!</h2>
   <p class="subtitle">You're checked in at <strong>${safeShopName}</strong></p>
+
+  <!-- Points box -->
   <div class="points-box" id="pointsBox">
     <div class="label">Your Current Points</div>
     <div class="points" id="pointsDisplay">...</div>
     <div class="unit">pts</div>
   </div>
+
+  <!-- Status -->
   <div class="status">
     <div class="dot"></div>
     <span id="statusText">Waiting for shopkeeper...</span>
   </div>
+
+  <!-- Progress bar -->
+  <div class="progress-section">
+    <div class="progress-label" id="progressLabel">Loading your points...</div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+
+  <!-- Redeem banner -->
   <div class="redeem-banner" id="redeemBanner">
     🎁 You have enough points to redeem a free reward! Tell the shopkeeper.
   </div>
+
+  <!-- Info box -->
   <div class="info">
-    🎯 Earn <strong>10 points</strong> for every <strong>₹100</strong> spent<br>
-    🎁 Redeem <strong>100 points</strong> for a free reward!
+    <div>⚡ Earn <strong>10 points</strong> for every <strong>₹100</strong> spent</div>
+    <div>🎁 Redeem <strong>${rewardThreshold} points</strong> for a free reward!</div>
   </div>
-  <p class="footer">Powered by Keepl</p>
+
+  <div class="footer">
+    <span>Powered by</span>
+    <div class="footer-dot"></div>
+    <strong style="color:var(--k-saffron);">keepl</strong>
+  </div>
+
 </div>
+
 <script>
   const phone = ${JSON.stringify(phone)};
   const shopId = ${JSON.stringify(shopId)};
+  const REWARD_THRESHOLD = ${rewardThreshold}; // ✅ per-shop value from DB
   let lastPoints = null;
   let pointsReceived = false;
 
@@ -142,10 +350,26 @@ router.get("/thankyou", async (req, res) => {
       if (!res.ok) return;
       const data = await res.json();
       const points = data.points || 0;
+
+      // ── Update points display ──
       document.getElementById("pointsDisplay").innerText = points;
-      if (points >= 100) {
+
+      // ── Update progress bar ──
+      const fill = document.getElementById("progressFill");
+      const label = document.getElementById("progressLabel");
+      const pct = Math.min((points / REWARD_THRESHOLD) * 100, 100);
+      fill.style.width = pct + "%";
+
+      if (points >= REWARD_THRESHOLD) {
+        fill.classList.add("complete");
+        label.innerHTML = "🎁 <strong>You've reached " + REWARD_THRESHOLD + " points!</strong> Ask for your free reward.";
         document.getElementById("redeemBanner").style.display = "block";
+      } else {
+        const needed = REWARD_THRESHOLD - points;
+        label.innerHTML = "<strong>" + needed + " more points</strong> needed for your free reward 🎯";
       }
+
+      // ── Animate on points update ──
       if (lastPoints !== null && points > lastPoints) {
         const box = document.getElementById("pointsBox");
         box.classList.add("updated");
@@ -157,6 +381,7 @@ router.get("/thankyou", async (req, res) => {
         document.getElementById("statusText").innerText =
           "Waiting for shopkeeper...";
       }
+
       lastPoints = points;
     } catch (err) {
       console.log("Poll error:", err);
@@ -199,70 +424,253 @@ router.get("/:shopId", async (req, res) => {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
+    const rewardThreshold = shop.rewardThreshold || 100;
+
     res.send(`<!DOCTYPE html>
 <html>
 <head>
 <title>${shopName} Rewards</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --k-saffron:    #FF6B00;
+    --k-saffron-lt: #FFF0E6;
+    --k-saffron-dk: #C24E00;
+    --k-teal:       #00796B;
+    --k-teal-lt:    #E0F2F0;
+    --k-ink:        #1A1A2E;
+    --k-ink-secondary: #4A4A6A;
+    --k-ink-tertiary:  #9090A8;
+    --k-bg:         #F7F6F2;
+    --k-border:     #E8E6DF;
+    --k-surface:    #FFFFFF;
+  }
+
   body {
     font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--k-bg);
     min-height: 100vh;
-    display: flex; justify-content: center; align-items: center; padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
   }
+
   .card {
-    background: white; border-radius: 20px; padding: 40px 30px;
-    width: 100%; max-width: 380px; text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    background: var(--k-surface);
+    border: 0.5px solid var(--k-border);
+    border-radius: 24px;
+    padding: 36px 28px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+    box-shadow: 0 8px 40px rgba(26,26,46,0.10);
   }
+
+  /* ── Logo ── */
+  .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--k-saffron);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+  }
+  .logo-text {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--k-ink);
+    letter-spacing: -0.5px;
+  }
+  .logo-text span { color: var(--k-saffron); }
+
+  /* ── Shop icon ── */
   .shop-icon {
-    width: 70px; height: 70px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    width: 68px;
+    height: 68px;
+    background: var(--k-saffron-lt);
     border-radius: 18px;
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 20px; font-size: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 18px;
+    font-size: 30px;
+    color: var(--k-saffron);
+    border: 0.5px solid rgba(255,107,0,0.2);
   }
-  h2 { font-size: 22px; color: #2d3436; margin-bottom: 6px; }
-  .subtitle { color: #636e72; font-size: 14px; margin-bottom: 28px; }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--k-ink);
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    color: var(--k-ink-tertiary);
+    font-size: 14px;
+    margin-bottom: 26px;
+    line-height: 1.5;
+  }
+
+  /* ── Inputs ── */
+  .form-group {
+    margin-bottom: 14px;
+    text-align: left;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--k-ink-secondary);
+    margin-bottom: 6px;
+  }
+
   input {
-    width: 100%; padding: 14px 16px; margin-bottom: 14px;
-    border-radius: 10px; border: 1.5px solid #e0e0e0;
-    font-size: 16px; outline: none; transition: border 0.2s;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--k-border);
+    font-size: 15px;
+    outline: none;
+    font-family: inherit;
+    color: var(--k-ink);
+    background: var(--k-surface);
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
-  input:focus { border-color: #667eea; }
-  button {
-    width: 100%; padding: 15px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white; border: none; border-radius: 10px;
-    font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 4px;
+
+  input:focus {
+    border-color: var(--k-saffron);
+    box-shadow: 0 0 0 3px rgba(255,107,0,0.10);
   }
-  button:disabled { opacity: 0.7; cursor: not-allowed; }
-  .info { margin-top: 20px; font-size: 13px; color: #888; line-height: 1.8; }
-  .footer { margin-top: 20px; font-size: 12px; color: #b2bec3; }
+
+  input::placeholder {
+    color: var(--k-ink-tertiary);
+  }
+
+  /* ── Submit button ── */
+  button[type="submit"] {
+    width: 100%;
+    padding: 14px;
+    background: var(--k-saffron);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 8px;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.15s;
+  }
+
+  button[type="submit"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  button[type="submit"]:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  /* ── Info box ── */
+  .info {
+    margin-top: 20px;
+    background: var(--k-bg);
+    border: 0.5px solid var(--k-border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: var(--k-ink-secondary);
+    line-height: 2;
+    text-align: left;
+  }
+
+  .footer {
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--k-ink-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .footer-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--k-ink-tertiary); }
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="shop-icon">🏪</div>
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-icon"><i class="ti ti-bolt"></i></div>
+    <div class="logo-text">keep<span>l</span></div>
+  </div>
+
+  <!-- Shop icon -->
+  <div class="shop-icon">
+    <i class="ti ti-store"></i>
+  </div>
+
   <h2>${shopName}</h2>
   <p class="subtitle">Enter your details to earn reward points</p>
+
   <form method="POST" action="/scan/capture" onsubmit="handleSubmit(event)">
-    <input name="name" placeholder="Your Name" required maxlength="80" autocomplete="name"/>
-    <input type="tel" name="phone" placeholder="Phone Number (10 digits)"
-      pattern="[0-9]{10}" inputmode="numeric" required autocomplete="tel"/>
+
+    <div class="form-group">
+      <label class="form-label">Your name</label>
+      <input name="name" placeholder="e.g. Priya Sharma" required maxlength="80" autocomplete="name"/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Phone number</label>
+      <input type="tel" name="phone" placeholder="10-digit number"
+        pattern="[0-9]{10}" inputmode="numeric" required autocomplete="tel"/>
+    </div>
+
     <input type="hidden" name="shopId" value="${shopId}"/>
-    <button type="submit" id="submitBtn">Join &amp; Earn Points 🎯</button>
+
+    <button type="submit" id="submitBtn">
+      <i class="ti ti-bolt"></i> Join &amp; Earn Points
+    </button>
+
   </form>
-  <div class="info">🎯 10 points per ₹100 spent<br>🎁 100 points = free reward!</div>
-  <div class="footer">Powered by Keepl</div>
+
+  <div class="info">
+    <div>⚡ Earn <strong>10 points</strong> per ₹100 spent</div>
+    <div>🎁 <strong>${rewardThreshold} points</strong> = free reward!</div>
+  </div>
+
+  <div class="footer">
+    <span>Powered by</span>
+    <div class="footer-dot"></div>
+    <strong style="color:var(--k-saffron);">keepl</strong>
+  </div>
+
 </div>
 <script>
 function handleSubmit(e){
   const btn = document.getElementById("submitBtn");
   btn.disabled = true;
-  btn.innerText = "Submitting...";
+  btn.innerHTML = '<i class="ti ti-loader"></i> Submitting...';
 }
 </script>
 </body>
