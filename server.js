@@ -129,9 +129,31 @@ app.get("/health", (req, res) => {
 ========================= */
 
 app.use((req, res) => {
-  res.status(404).json({
-    message: "Route not found"
-  });
+  res.status(404).send(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>404 — Keepl</title>
+  <link rel="stylesheet" href="/keepl.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    body { font-family: Arial, sans-serif; background: var(--k-bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+  </style>
+</head>
+<body>
+  <div style="text-align:center; padding:40px;">
+    <div style="width:72px;height:72px;background:var(--k-saffron-lt);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:32px;color:var(--k-saffron);">
+      <i class="ti ti-map-pin-off"></i>
+    </div>
+    <h1 style="font-size:48px;font-weight:500;color:var(--k-ink);margin:0 0 8px;">404</h1>
+    <p style="font-size:16px;color:var(--k-ink-tertiary);margin:0 0 32px;">This page doesn't exist</p>
+    <a href="/" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:var(--k-saffron);color:white;border-radius:14px;text-decoration:none;font-size:14px;font-weight:500;">
+      <i class="ti ti-home"></i> Go to login
+    </a>
+  </div>
+</body>
+</html>`);
 });
 
 /* =========================
