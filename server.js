@@ -62,18 +62,19 @@ app.set("views", path.join(__dirname, "views"));
    HOME PAGE
 ========================= */
 
+// ✅ index.html is the login page
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "login.html"));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ✅ Clean login route (register.html links here)
+// ✅ /login also serves index.html
 app.get("/login", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "login.html"));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ✅ Clean register route (login.html links here)
+// ✅ /register renders register.ejs via EJS view engine
 app.get("/register", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "register.html"));
+  res.render("register");
 });
 
 /* =========================
