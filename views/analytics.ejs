@@ -4,80 +4,298 @@
 <title>Analytics — Keepl</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/keepl.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,sans-serif;background:#f4f6fa;min-height:100vh;padding:24px 16px;color:#2d3436}
-  .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
-  .top-bar h1{font-size:20px;font-weight:600}
-  .back{font-size:14px;color:#667eea;text-decoration:none;margin-right:12px}
-  .toggle{display:flex;background:white;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden}
-  .toggle button{padding:7px 20px;font-size:13px;border:none;background:transparent;cursor:pointer;color:#636e72;transition:background 0.15s}
-  .toggle button.active{background:#667eea;color:white;font-weight:600}
-  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
-  .stat{background:white;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
-  .stat .label{font-size:12px;color:#888;margin-bottom:6px}
-  .stat .value{font-size:22px;font-weight:700;color:#2d3436}
-  .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px}
-  .card{background:white;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
-  .card h3{font-size:14px;font-weight:600;color:#636e72;margin-bottom:16px}
-  .bottom{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-  .donut-wrap{display:flex;align-items:center;gap:24px}
-  .legend{display:flex;flex-direction:column;gap:10px}
-  .legend-item{display:flex;align-items:center;gap:8px;font-size:13px;color:#444}
-  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-  .top-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
-  .top-row:last-child{border-bottom:none}
-  .top-name{font-weight:600;color:#2d3436}
-  .top-meta{color:#888}
-  .loading{opacity:0.4;pointer-events:none}
+  body {
+    font-family: Arial, sans-serif;
+    background: var(--k-bg);
+    min-height: 100vh;
+    padding: 0;
+    margin: 0;
+    color: var(--k-ink);
+  }
+
+  .k-page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+  }
+
+  /* ── Top bar ── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .top-bar h1 {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--k-ink);
+    margin: 0;
+  }
+
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: var(--k-ink-tertiary);
+    text-decoration: none;
+    padding: 6px 12px;
+    border: 0.5px solid var(--k-border);
+    border-radius: var(--k-r-sm);
+    background: var(--k-surface);
+    transition: border-color 0.15s;
+  }
+
+  .back:hover {
+    border-color: var(--k-saffron);
+    color: var(--k-saffron);
+  }
+
+  /* ── Toggle ── */
+  .toggle {
+    display: flex;
+    background: var(--k-surface);
+    border: 0.5px solid var(--k-border);
+    border-radius: var(--k-r-sm);
+    overflow: hidden;
+  }
+
+  .toggle button {
+    padding: 8px 20px;
+    font-size: 13px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--k-ink-tertiary);
+    font-family: inherit;
+    font-weight: 500;
+    transition: background 0.15s, color 0.15s;
+    width: auto;
+  }
+
+  .toggle button.active {
+    background: var(--k-saffron);
+    color: white;
+  }
+
+  .toggle button:hover:not(.active) {
+    background: var(--k-saffron-lt);
+    color: var(--k-saffron-dk);
+  }
+
+  /* ── Stat grid ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat {
+    background: var(--k-surface);
+    border: 0.5px solid var(--k-border);
+    border-radius: var(--k-r-lg);
+    padding: 18px 16px;
+  }
+
+  .stat .label {
+    font-size: 12px;
+    color: var(--k-ink-tertiary);
+    margin-bottom: 8px;
+  }
+
+  .stat .value {
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--k-ink);
+  }
+
+  /* ── Chart cards ── */
+  .charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .card {
+    background: var(--k-surface);
+    border: 0.5px solid var(--k-border);
+    border-radius: var(--k-r-lg);
+    padding: 20px;
+  }
+
+  .card h3 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--k-ink-tertiary);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .bottom {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── Donut ── */
+  .donut-wrap {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .legend {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--k-ink-secondary);
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Top customers list ── */
+  .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 0;
+    border-bottom: 0.5px solid var(--k-border);
+    font-size: 13px;
+  }
+
+  .top-row:last-child {
+    border-bottom: none;
+  }
+
+  .top-name {
+    font-weight: 500;
+    color: var(--k-ink);
+    margin-bottom: 2px;
+  }
+
+  .top-meta {
+    color: var(--k-ink-tertiary);
+    font-size: 12px;
+  }
+
+  .loading {
+    opacity: 0.4;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
 
-<div class="top-bar">
-  <div style="display:flex;align-items:center">
-    <a class="back" href="/dashboard/<%= shopId %>">← Dashboard</a>
-    <h1>Analytics</h1>
+<!-- Nav -->
+<nav class="k-nav">
+  <div class="k-nav-logo">
+    <div class="k-nav-logo-icon"><i class="ti ti-bolt"></i></div>
+    <div class="k-nav-logo-text">keep<span>l</span></div>
   </div>
-  <div class="toggle">
-    <button class="active" onclick="load(7,this)">7 days</button>
-    <button onclick="load(30,this)">30 days</button>
+  <div class="k-nav-actions">
+    <a class="back" href="/dashboard/<%= shopId %>">
+      <i class="ti ti-arrow-left"></i> Dashboard
+    </a>
   </div>
-</div>
+</nav>
 
-<div class="stat-grid" id="statGrid">
-  <div class="stat"><div class="label">Total revenue</div><div class="value" id="s-rev">—</div></div>
-  <div class="stat"><div class="label">Points issued</div><div class="value" id="s-pts">—</div></div>
-  <div class="stat"><div class="label">Repeat customers</div><div class="value" id="s-rep">—</div></div>
-  <div class="stat"><div class="label">Avg bill</div><div class="value" id="s-avg">—</div></div>
-</div>
+<div class="k-page">
 
-<div class="charts">
-  <div class="card">
-    <h3>Revenue per day (₹)</h3>
-    <canvas id="revenueChart" height="160"></canvas>
-  </div>
-  <div class="card">
-    <h3>Points issued per day</h3>
-    <canvas id="pointsChart" height="160"></canvas>
-  </div>
-</div>
-
-<div class="bottom">
-  <div class="card">
-    <h3>Customer breakdown</h3>
-    <div class="donut-wrap">
-      <canvas id="donutChart" width="110" height="110"></canvas>
-      <div class="legend">
-        <div class="legend-item"><div class="dot" style="background:#667eea"></div><span id="repeatLbl">Repeat</span></div>
-        <div class="legend-item"><div class="dot" style="background:#dfe6e9"></div><span id="newLbl">New</span></div>
-      </div>
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <h1><i class="ti ti-chart-bar" style="color:var(--k-saffron);vertical-align:-2px;margin-right:6px;"></i>Analytics</h1>
+    </div>
+    <div class="toggle">
+      <button class="active" onclick="load(7,this)">7 days</button>
+      <button onclick="load(30,this)">30 days</button>
     </div>
   </div>
-  <div class="card">
-    <h3>Top customers</h3>
-    <div id="topList"></div>
+
+  <!-- Stat cards -->
+  <div class="stat-grid" id="statGrid">
+    <div class="stat">
+      <div class="label">Total revenue</div>
+      <div class="value" id="s-rev">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">Points issued</div>
+      <div class="value" id="s-pts">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">Repeat customers</div>
+      <div class="value" id="s-rep">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">Avg bill</div>
+      <div class="value" id="s-avg">—</div>
+    </div>
   </div>
+
+  <!-- Charts -->
+  <div class="charts">
+    <div class="card">
+      <h3>Revenue per day (₹)</h3>
+      <canvas id="revenueChart" height="160"></canvas>
+    </div>
+    <div class="card">
+      <h3>Points issued per day</h3>
+      <canvas id="pointsChart" height="160"></canvas>
+    </div>
+  </div>
+
+  <!-- Bottom -->
+  <div class="bottom">
+    <div class="card">
+      <h3>Customer breakdown</h3>
+      <div class="donut-wrap">
+        <canvas id="donutChart" width="110" height="110"></canvas>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="dot" style="background:var(--k-saffron)"></div>
+            <span id="repeatLbl">Repeat</span>
+          </div>
+          <div class="legend-item">
+            <div class="dot" style="background:var(--k-border)"></div>
+            <span id="newLbl">New</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Top customers</h3>
+      <div id="topList"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -89,8 +307,8 @@
     maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
-      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: "#999" } },
-      y: { grid: { color: "rgba(0,0,0,0.05)" }, ticks: { font: { size: 11 }, color: "#999" } }
+      x: { grid: { display: false }, ticks: { font: { size: 11 }, color: "#9090A8" } },
+      y: { grid: { color: "rgba(0,0,0,0.04)" }, ticks: { font: { size: 11 }, color: "#9090A8" } }
     }
   };
 
@@ -115,9 +333,9 @@
         labels: d.labels,
         datasets: [{
           data: d.revenue,
-          borderColor: '#667eea',
-          backgroundColor: 'rgba(102,126,234,0.08)',
-          fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#667eea'
+          borderColor: '#FF6B00',
+          backgroundColor: 'rgba(255,107,0,0.08)',
+          fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#FF6B00'
         }]
       },
       options: { ...baseOpts, maintainAspectRatio: false }
@@ -131,8 +349,8 @@
         labels: d.labels,
         datasets: [{
           data: d.points,
-          backgroundColor: 'rgba(102,126,234,0.65)',
-          borderRadius: 4
+          backgroundColor: 'rgba(0,121,107,0.65)',
+          borderRadius: 6
         }]
       },
       options: { ...baseOpts, maintainAspectRatio: false }
@@ -147,7 +365,7 @@
       data: {
         datasets: [{
           data: [repeat, newC],
-          backgroundColor: ['#667eea', '#dfe6e9'],
+          backgroundColor: ['#FF6B00', '#E8E6DF'],
           borderWidth: 0,
           hoverOffset: 4
         }]
@@ -165,7 +383,7 @@
           <div class="top-meta">${c.phone}</div>
         </div>
         <div style="text-align:right">
-          <div style="font-weight:600;color:#667eea">${c.points} pts</div>
+          <div style="font-weight:500;color:var(--k-saffron)">${c.points} pts</div>
           <div class="top-meta">₹${c.totalEarned.toLocaleString('en-IN')} earned</div>
         </div>
       </div>`).join('');
