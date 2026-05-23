@@ -7,40 +7,71 @@
 
 <title>Keepl Shop Login</title>
 
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/keepl.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 
 <!-- ✅ Favicon -->
 <link rel="icon" href="/icons/keepl-192.png">
 
 <!-- PWA -->
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#2f80ed">
+<meta name="theme-color" content="#FF6B00">
 
 <style>
-.subtitle{
-  text-align:center;
-  color:#666;
-  font-size:14px;
-  margin-bottom:20px;
+body {
+  font-family: Arial, sans-serif;
+  background: var(--k-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
 }
 
-.error{
-  color:#e74c3c;
-  font-size:14px;
-  text-align:center;
-  margin-top:10px;
+.subtitle {
+  text-align: center;
+  color: var(--k-ink-tertiary);
+  font-size: 14px;
+  margin-bottom: 24px;
 }
 
-.register{
-  text-align:center;
-  margin-top:15px;
-  font-size:14px;
+.error {
+  color: var(--k-danger);
+  font-size: 14px;
+  text-align: center;
+  margin-top: 10px;
 }
 
-.installBtn{
-  margin-top:10px;
-  width:100%;
-  background:#27ae60;
+.register {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--k-ink-tertiary);
+}
+
+.register a {
+  color: var(--k-saffron);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.register a:hover {
+  text-decoration: underline;
+}
+
+.installBtn {
+  margin-top: 10px;
+  width: 100%;
+  background: var(--k-teal);
+  color: white;
+  border: none;
+  padding: 11px 20px;
+  border-radius: var(--k-r-md);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
 }
 </style>
 
@@ -59,44 +90,61 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <body>
 
-<div class="login-card">
+<div class="k-auth-card" style="max-width:400px; width:100%;">
 
-<h2>Keepl Shop Login</h2>
+  <!-- Logo -->
+  <div class="k-auth-logo" style="justify-content:center; margin-bottom:6px;">
+    <div class="k-auth-logo-icon">
+      <i class="ti ti-bolt"></i>
+    </div>
+    <div class="k-auth-logo-text">keep<span>l</span></div>
+  </div>
 
-<p class="subtitle">
-Access your shop rewards dashboard
-</p>
+  <p class="subtitle">Access your shop rewards dashboard</p>
 
-<form id="loginForm">
+  <!-- Error message -->
+  <p id="errorMsg" class="error"></p>
 
-  <input 
-    id="phone"
-    type="tel"
-    placeholder="Shop Owner Phone Number"
-    required
-  />
+  <form id="loginForm">
 
-  <input 
-    id="password"
-    type="password"
-    placeholder="Password"
-    required
-  />
+    <div class="k-form-group">
+      <label class="k-label" for="phone">Phone number</label>
+      <input
+        class="k-input"
+        id="phone"
+        type="tel"
+        placeholder="98765 43210"
+        required
+      />
+    </div>
 
-  <button id="loginBtn" type="submit">Login</button>
+    <div class="k-form-group" style="margin-bottom:24px;">
+      <label class="k-label" for="password">Password</label>
+      <input
+        class="k-input"
+        id="password"
+        type="password"
+        placeholder="Your password"
+        required
+      />
+    </div>
 
-</form>
+    <button id="loginBtn" type="submit" class="k-btn k-btn-primary k-btn-full k-btn-lg">
+      <i class="ti ti-bolt"></i> Login to Dashboard
+    </button>
 
-<p id="errorMsg" class="error"></p>
+  </form>
 
-<button id="installBtn" class="installBtn" style="display:none;">
-Install Keepl App
-</button>
+  <button id="installBtn" class="installBtn" style="display:none;">
+    <i class="ti ti-download"></i> Install Keepl App
+  </button>
 
-<p class="register">
-Don't have a shop account?
-<a href="/register.html">Register Shop</a>
-</p>
+  <div class="k-auth-divider"></div>
+
+  <p class="register">
+    Don't have a shop account?
+    <a href="/register">Register Shop</a>
+  </p>
 
 </div>
 
@@ -148,7 +196,7 @@ form.addEventListener("submit", async (e) => {
   }
 
   btn.disabled = false;
-  btn.innerText = "Login";
+  btn.innerHTML = '<i class="ti ti-bolt"></i> Login to Dashboard';
 });
 </script>
 

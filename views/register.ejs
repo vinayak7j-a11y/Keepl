@@ -1,31 +1,142 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Keepl - Register Shop</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register — Keepl</title>
+  <link rel="stylesheet" href="/keepl.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 </head>
-
 <body>
+  <div class="k-center">
+    <div class="k-auth-card" style="max-width:460px;">
 
-<h2>Register Your Shop</h2>
+      <div class="k-auth-logo">
+        <div class="k-auth-logo-icon">
+          <i class="ti ti-bolt"></i>
+        </div>
+        <div class="k-auth-logo-text">keep<span>l</span></div>
+      </div>
+      <p class="k-auth-tagline">Register your shop and start rewarding customers</p>
 
-<form action="/api/shops/register" method="POST">
+      <div id="error-msg" class="k-alert k-alert-danger" style="display:none;">
+        <i class="ti ti-alert-circle"></i>
+        <span id="error-text">Something went wrong</span>
+      </div>
 
-<input type="text" name="name" placeholder="Shop Name" required>
-<br><br>
+      <div id="success-msg" class="k-alert k-alert-success" style="display:none;">
+        <i class="ti ti-check"></i>
+        <span>Shop registered! Redirecting to dashboard...</span>
+      </div>
 
-<input type="text" name="ownerName" placeholder="Owner Name" required>
-<br><br>
+      <div class="k-form-group">
+        <label class="k-label" for="ownerName">Your name</label>
+        <input class="k-input" type="text" id="ownerName" placeholder="e.g. Rajan Mehta" />
+      </div>
 
-<input type="tel" name="phone" placeholder="Phone Number" required>
-<br><br>
+      <div class="k-form-group">
+        <label class="k-label" for="shopName">Shop name</label>
+        <input class="k-input" type="text" id="shopName" placeholder="e.g. Rajan's Kirana Store" />
+      </div>
 
-<input type="password" name="password" placeholder="Password" required>
-<br><br>
+      <div class="k-form-group">
+        <label class="k-label" for="phone">Phone number</label>
+        <div class="k-input-prefix-wrap">
+          <span class="k-prefix">+91</span>
+          <input class="k-input" type="tel" id="phone" placeholder="98765 43210" maxlength="10" />
+        </div>
+      </div>
 
-<button type="submit">Register Shop</button>
+      <div class="k-form-group">
+        <label class="k-label" for="password">Password</label>
+        <input class="k-input" type="password" id="password" placeholder="Create a password" />
+      </div>
 
-</form>
+      <div class="k-form-group" style="margin-bottom:24px;">
+        <label class="k-label" for="confirmPassword">Confirm password</label>
+        <input class="k-input" type="password" id="confirmPassword" placeholder="Re-enter your password" />
+      </div>
 
+      <button class="k-btn k-btn-primary k-btn-full k-btn-lg" onclick="handleRegister()">
+        <i class="ti ti-store"></i> Register my shop
+      </button>
+
+      <div class="k-auth-divider"></div>
+
+      <div class="k-auth-footer">
+        Already registered? <a href="/login">Sign in</a>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    async function handleRegister() {
+      const ownerName = document.getElementById('ownerName').value.trim();
+      const shopName = document.getElementById('shopName').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+      const errorMsg = document.getElementById('error-msg');
+      const errorText = document.getElementById('error-text');
+      const successMsg = document.getElementById('success-msg');
+
+      errorMsg.style.display = 'none';
+      successMsg.style.display = 'none';
+
+      if (!ownerName || !shopName || !phone || !password || !confirmPassword) {
+        errorText.textContent = 'Please fill in all fields';
+        errorMsg.style.display = 'flex';
+        return;
+      }
+
+      if (phone.length !== 10 || isNaN(phone)) {
+        errorText.textContent = 'Enter a valid 10-digit phone number';
+        errorMsg.style.display = 'flex';
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        errorText.textContent = 'Passwords do not match';
+        errorMsg.style.display = 'flex';
+        return;
+      }
+
+      if (password.length < 6) {
+        errorText.textContent = 'Password must be at least 6 characters';
+        errorMsg.style.display = 'flex';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/shops/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ownerName, name: shopName, phone, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorText.textContent = data.message || 'Registration failed';
+          errorMsg.style.display = 'flex';
+          return;
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('shopId', data.shop?.shopId || '');
+        successMsg.style.display = 'flex';
+        setTimeout(() => window.location.href = '/dashboard/' + (data.shop?.shopId || ''), 1500);
+      } catch (err) {
+        errorText.textContent = 'Something went wrong. Try again.';
+        errorMsg.style.display = 'flex';
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleRegister();
+    });
+  </script>
 </body>
 </html>
