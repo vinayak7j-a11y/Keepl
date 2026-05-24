@@ -186,6 +186,7 @@ form.addEventListener("submit", async (e) => {
     if (res.ok && data.shopId) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("shopId", data.shopId);
+      localStorage.setItem("qrCode", data.qrCode || "");
       window.location.href = "/dashboard/" + data.shopId;
     } else {
       errorMsg.innerText = data.message || "Login failed";
