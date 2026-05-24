@@ -16,7 +16,11 @@ const getDashboard = async (req, res) => {
       return res.status(400).send("Invalid shop");
     }
 
-    const shop = await Shop.findOne({ shopId }).lean();
+    // ✅ Exclude qrCode from query — it's a large base64 string
+    // that bloats the HTML and truncates the JS. Loaded via localStorage instead.
+    const shop = await Shop.findOne({ shopId })
+      .select("-qrCode")
+      .lean();
 
     if (!shop) {
       return res.status(404).send("Shop not found");
@@ -123,8 +127,10 @@ const getCustomersPage = async (req, res) => {
       return res.status(400).send("Invalid shop");
     }
 
-    // Verify shop exists — auth is handled by middleware, just need shop for EJS
-    const shop = await Shop.findOne({ shopId }).lean();
+    // ✅ Exclude qrCode here too — not needed on customers page
+    const shop = await Shop.findOne({ shopId })
+      .select("-qrCode")
+      .lean();
 
     if (!shop) {
       return res.status(404).send("Shop not found");
@@ -147,7 +153,10 @@ const getLiveStats = async (req, res) => {
   try {
     const { shopId } = req.params;
 
-    const shop = await Shop.findOne({ shopId }).lean();
+    const shop = await Shop.findOne({ shopId })
+      .select("-qrCode")
+      .lean();
+
     if (!shop) return res.status(404).json({ message: "Shop not found" });
 
     const today = new Date();
