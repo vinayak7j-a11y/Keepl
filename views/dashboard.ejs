@@ -847,6 +847,12 @@ async function searchCustomer(query){
             onclick="givePointsManual('${c.phone}', this.dataset.name, this)">
             <i class="ti ti-bolt"></i> Give
           </button>
+          <button
+            class="k-btn k-btn-sm"
+            style="background:var(--k-bg);color:var(--k-ink-tertiary);border:0.5px solid var(--k-border);"
+            onclick="document.getElementById('search-row-${c.phone}').remove()">
+            <i class="ti ti-x"></i>
+          </button>
         </div>
       </div>`;
     }).join("");
