@@ -20,6 +20,7 @@ const customerRoutes = require("./routes/customerRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
 const redeemRoutes = require("./routes/redeemRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const dashboardController = require("./controllers/dashboardController");
 const queueRoutes = require("./routes/queueRoutes");
 const posterRoutes = require("./routes/posterRoutes");
 const shopPageRoutes = require("./routes/shopPageRoutes");
@@ -102,9 +103,11 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/shop", shopPageRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/poster", posterRoutes);
-app.get("/analytics/:shopId", authMiddleware, (req, res) => {
+app.get("/analytics/:shopId", (req, res) => {
   res.render("analytics", { shopId: req.params.shopId });
 });
+
+app.get("/customers/:shopId", dashboardController.getCustomersPage);
 
 /* =========================
    SCAN ROUTES (MUST BE LAST)
