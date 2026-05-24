@@ -235,33 +235,47 @@ input[type="number"]:focus {
 
   <!-- ── Reward Settings ── -->
   <div class="k-card">
-    <div class="k-card-title">
-      <i class="ti ti-settings" style="color:var(--k-saffron);"></i>
-      Reward Settings
-    </div>
-
-    <p style="font-size:14px;color:var(--k-ink-secondary);margin-bottom:12px;">
-      Set how many points a customer needs to earn a free reward.
-    </p>
-
-    <div class="settings-row">
-      <label for="thresholdInput">Points needed for reward:</label>
-      <input
-        type="number"
-        id="thresholdInput"
-        min="10"
-        step="10"
-        value="<%= shop.rewardThreshold || 100 %>"
-      />
-      <button class="k-btn k-btn-primary k-btn-sm" onclick="saveRewardThreshold()">
-        <i class="ti ti-device-floppy"></i> Save
+    <!-- Collapsed summary row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <i class="ti ti-settings" style="color:var(--k-saffron);font-size:18px;"></i>
+        <div>
+          <div style="font-size:14px;font-weight:500;color:var(--k-ink);">Reward Settings</div>
+          <div style="font-size:13px;color:var(--k-ink-tertiary);">
+            Customers need <strong id="thresholdDisplay"><%= shop.rewardThreshold || 100 %></strong> points for a free reward
+          </div>
+        </div>
+      </div>
+      <button class="k-btn k-btn-ghost k-btn-sm" onclick="toggleRewardSettings()">
+        <i class="ti ti-edit"></i> Edit
       </button>
     </div>
 
-    <p class="settings-hint">
-      Minimum 10 points. Customers see this on their scan page.
-    </p>
-    <div id="thresholdMsg" style="margin-top:8px;"></div>
+    <!-- Expanded settings — hidden by default -->
+    <div id="rewardSettingsExpanded" style="display:none;margin-top:16px;padding-top:16px;border-top:0.5px solid var(--k-border);">
+      <p style="font-size:14px;color:var(--k-ink-secondary);margin-bottom:12px;">
+        Set how many points a customer needs to earn a free reward.
+      </p>
+
+      <div class="settings-row">
+        <label for="thresholdInput">Points needed for reward:</label>
+        <input
+          type="number"
+          id="thresholdInput"
+          min="10"
+          step="10"
+          value="<%= shop.rewardThreshold || 100 %>"
+        />
+        <button class="k-btn k-btn-primary k-btn-sm" onclick="saveRewardThreshold()">
+          <i class="ti ti-device-floppy"></i> Save
+        </button>
+      </div>
+
+      <p class="settings-hint">
+        Minimum 10 points. Customers see this on their scan page.
+      </p>
+      <div id="thresholdMsg" style="margin-top:8px;"></div>
+    </div>
   </div>
 
 </div><!-- end k-page -->
@@ -401,7 +415,9 @@ async function saveRewardThreshold(){
     const data = await res.json();
 
     if(res.ok){
-      msg.innerHTML = `<span class="success">✓ Saved! Customers now need ${data.rewardThreshold} points for a reward.</span>`;
+      msg.innerHTML = `<span class="success">✓ Saved!</span>`;
+      document.getElementById('thresholdDisplay').innerText = data.rewardThreshold;
+      setTimeout(() => { document.getElementById('rewardSettingsExpanded').style.display = 'none'; }, 1000);
     } else {
       msg.innerHTML = `<span class="error">${data.message || "Failed to save"}</span>`;
     }
@@ -411,6 +427,17 @@ async function saveRewardThreshold(){
     msg.innerHTML = "<span class='error'>Server error. Try again.</span>";
   }
 }
+
+/* =========================
+   TOGGLE REWARD SETTINGS
+========================= */
+
+function toggleRewardSettings(){
+  const expanded = document.getElementById("rewardSettingsExpanded");
+  const isHidden = expanded.style.display === "none";
+  expanded.style.display = isHidden ? "block" : "none";
+}
+
 
 /* =========================
    FETCH QUEUE
