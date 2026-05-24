@@ -667,7 +667,29 @@ router.get("/:shopId", async (req, res) => {
 
 </div>
 <script>
+// ✅ Auto-fill for returning customers
+(function(){
+  const savedName  = localStorage.getItem("keepl_name");
+  const savedPhone = localStorage.getItem("keepl_phone");
+  if(savedName)  document.querySelector('input[name="name"]').value  = savedName;
+  if(savedPhone) document.querySelector('input[name="phone"]').value = savedPhone;
+
+  // Show returning customer message
+  if(savedName && savedPhone){
+    const subtitle = document.querySelector('.subtitle');
+    if(subtitle){
+      subtitle.innerHTML = 'Welcome back, <strong>' + savedName + '</strong>! Tap below to check in.';
+    }
+  }
+})();
+
 function handleSubmit(e){
+  // Save details for next visit
+  const name  = document.querySelector('input[name="name"]').value.trim();
+  const phone = document.querySelector('input[name="phone"]').value.trim();
+  if(name)  localStorage.setItem("keepl_name",  name);
+  if(phone) localStorage.setItem("keepl_phone", phone);
+
   const btn = document.getElementById("submitBtn");
   btn.disabled = true;
   btn.innerHTML = '<i class="ti ti-loader"></i> Submitting...';
