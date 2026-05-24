@@ -316,7 +316,10 @@
     document.querySelectorAll('.toggle button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
-    const res = await fetch(`/api/analytics/${shopId}?range=${range}`);
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/analytics/${shopId}?range=${range}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
     const d = await res.json();
 
     // Stat cards
