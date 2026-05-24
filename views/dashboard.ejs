@@ -225,11 +225,8 @@ input[type="number"]:focus {
       Your Shop QR
     </div>
 
-    <% if(shop.qrCode){ %>
-    <img src="<%= shop.qrCode %>" width="200">
-    <% } else { %>
-    <p style="color:var(--k-danger);font-size:14px;">QR not generated. Please logout and login again.</p>
-    <% } %>
+    <img id="shopQRImg" src="" width="200" style="display:none;">
+    <p id="qrMissing" style="color:var(--k-danger);font-size:14px;display:none;">QR not generated. Please logout and login again.</p>
 
     <p style="margin-top:12px;font-size:14px;color:var(--k-ink-tertiary);">
       Customers scan this QR to earn rewards
@@ -726,8 +723,20 @@ async function redeemPoints(phone, queueId, customerName, currentPoints, btn){
 ========================= */
 
 fetchQueue();
-
 fetchLiveStats();
+loadQR();
+
+function loadQR(){
+  const qr = localStorage.getItem('qrCode');
+  const img = document.getElementById('shopQRImg');
+  const missing = document.getElementById('qrMissing');
+  if(qr && img){
+    img.src = qr;
+    img.style.display = 'block';
+  } else if(missing){
+    missing.style.display = 'block';
+  }
+}
 setInterval(fetchLiveStats, 30000);
 
 setInterval(()=>{
