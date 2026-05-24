@@ -16,8 +16,12 @@ if (
 }
 
 // ✅ Specific routes MUST come before the wildcard /:shopId
-router.get("/stats/:shopId",     authMiddleware, dashboardController.getLiveStats);
-router.get("/customers/:shopId", authMiddleware, dashboardController.getCustomersPage);
-router.get("/:shopId",           authMiddleware, dashboardController.getDashboard);
+
+// API route — needs auth header ✅
+router.get("/stats/:shopId", authMiddleware, dashboardController.getLiveStats);
+
+// Page render routes — auth handled client-side via localStorage ✅
+router.get("/customers/:shopId", dashboardController.getCustomersPage);
+router.get("/:shopId",           dashboardController.getDashboard);
 
 module.exports = router;
