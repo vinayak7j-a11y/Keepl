@@ -209,7 +209,29 @@ input[type="number"]:focus {
     </div>
   </div>
 
-  <!-- ── Queue card ── -->
+  <!-- ── Manual Customer Search ── -->
+  <div class="k-card" style="margin-bottom:20px;">
+    <div class="k-card-title">
+      <i class="ti ti-search" style="color:var(--k-saffron);"></i>
+      Give Points Without Scan
+    </div>
+    <p style="font-size:13px;color:var(--k-ink-tertiary);margin-bottom:14px;">
+      Search a regular customer by phone or name and give points directly.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <input
+        type="text"
+        id="customerSearchInput"
+        placeholder="Phone number or name..."
+        class="k-input"
+        style="flex:1;min-width:200px;"
+        oninput="searchCustomer(this.value)"
+      />
+    </div>
+    <div id="customerSearchResult" style="margin-top:12px;"></div>
+  </div>
+
+    <!-- ── Queue card ── -->
   <div class="k-card">
     <div class="k-card-title">
       <i class="ti ti-list-check" style="color:var(--k-saffron);"></i>
@@ -764,6 +786,151 @@ function loadQR(){
     missing.style.display = 'block';
   }
 }
+
+/* =========================
+   MANUAL CUSTOMER SEARCH
+========================= */
+
+async function searchCustomer(query){
+  const resultDiv = document.getElementById("customerSearchResult");
+
+  if(!query || query.length < 3){
+    resultDiv.innerHTML = "";
+    return;
+  }
+
+  try{
+    const shopId = "<%= shop.shopId %>";
+    const res = await fetch(`${BASE_URL}/api/customers/shop/${shopId}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if(!res.ok) return;
+
+    const customers = await res.json();
+
+    const q = query.toLowerCase();
+    const matched = customers.filter(c =>
+      (c.name || "").toLowerCase().includes(q) ||
+      (c.phone || "").includes(q)
+    ).slice(0, 5);
+
+    if(!matched.length){
+      resultDiv.innerHTML = `<p style="font-size:13px;color:var(--k-ink-tertiary);margin-top:8px;">No customers found</p>`;
+      return;
+    }
+
+    resultDiv.innerHTML = matched.map(c => {
+      const initials = c.name ? c.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) : "?";
+      return `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:0.5px solid var(--k-border);">
+        <div style="width:40px;height:40px;border-radius:10px;background:var(--k-saffron-lt);color:var(--k-saffron-dk);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;flex-shrink:0;">
+          ${initials}
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:500;color:var(--k-ink);">${safe(c.name)}</div>
+          <div style="font-size:12px;color:var(--k-ink-tertiary);">${c.phone} · ${c.points} pts at your shop</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input
+            type="number"
+            id="search-amount-${c.phone}"
+            placeholder="₹ amount"
+            min="1"
+            style="width:100px;padding:7px 10px;border:1.5px solid var(--k-border);border-radius:var(--k-r-sm);font-size:13px;font-family:inherit;outline:none;"
+            onfocus="activeInputPhone='${c.phone}'"
+            onblur="setTimeout(()=>{ activeInputPhone=null; }, 300)"
+          >
+          <button
+            class="k-btn k-btn-primary k-btn-sm"
+            data-name="${c.name}"
+            onclick="givePointsManual('${c.phone}', this.dataset.name, this)">
+            <i class="ti ti-bolt"></i> Give
+          </button>
+        </div>
+      </div>`;
+    }).join("");
+
+  }catch(err){
+    console.error("Search error:", err);
+  }
+}
+
+/* =========================
+   GIVE POINTS MANUAL (no queue)
+========================= */
+
+async function givePointsManual(phone, customerName, btn){
+  if(btn.disabled) return;
+
+  const amountInput = document.getElementById(`search-amount-${phone}`);
+  const snapshotAmount = amountInput?.value;
+  activeInputPhone = phone;
+
+  if(!snapshotAmount || snapshotAmount <= 0){
+    alert("Enter a valid bill amount");
+    activeInputPhone = null;
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = "...";
+
+  const shopId = "<%= shop.shopId %>";
+
+  try{
+    const res = await fetch(`${BASE_URL}/api/transactions`, {
+      method: "POST",
+      headers:{
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        phone,
+        shopId,
+        billAmount: Number(snapshotAmount)
+      })
+    });
+
+    const data = await res.json();
+
+    if(res.ok){
+      const earned = data.pointsEarned;
+      const total  = data.totalPoints;
+
+      sendWhatsApp(phone, customerName, earned, total, snapshotAmount);
+
+      amountInput.value = "";
+      activeInputPhone = null;
+
+      // Refresh search results
+      const q = document.getElementById("customerSearchInput").value;
+      searchCustomer(q);
+
+      // Show success briefly
+      const row = btn.closest('div[style*="border-bottom"]');
+      if(row){
+        const msg = document.createElement('span');
+        msg.style.cssText = 'font-size:12px;color:var(--k-teal);font-weight:500;margin-left:8px;';
+        msg.innerText = '+' + earned + ' pts ✓';
+        btn.parentElement.appendChild(msg);
+        setTimeout(() => msg.remove(), 3000);
+      }
+
+    }else{
+      alert(data.message || "Failed to give points");
+    }
+
+  }catch(err){
+    console.error("Manual give error:", err);
+    alert("Server error");
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-bolt"></i> Give';
+  activeInputPhone = null;
+}
+
 setInterval(fetchLiveStats, 30000);
 
 setInterval(()=>{
