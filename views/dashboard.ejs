@@ -343,7 +343,7 @@ function sendWhatsApp(phone, customerName, pointsEarned, totalPoints, amountSpen
     `🧾 Amount Spent: ₹${amountSpent}\n` +
     `⭐ Points Earned: *${pointsEarned} pts*\n` +
     `🏆 Total Points: *${totalPoints} pts*\n\n` +
-    `🎁 Collect *100 points* to redeem exciting rewards!\n\n` +
+    `${totalPoints >= 100 ? "🎉 Congratulations! You have collected *" + totalPoints + " points*! You can now redeem your points for a free reward! Tell the shopkeeper 🎁" : "🎁 Collect *100 points* to redeem a free reward!"}\n\n` +
     `See you again soon 😊\n` +
     `– ${SHOP_NAME} via Keepl`;
 
