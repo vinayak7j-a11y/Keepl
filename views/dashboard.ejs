@@ -522,7 +522,7 @@ async function fetchQueue(){
             >
             <button
               class="k-btn k-btn-primary k-btn-sm"
-              onclick="givePoints('${customer.phone}','${customer.queueId}',${JSON.stringify(customer.name)},this)">
+              onclick="givePoints('${customer.phone}','${customer.queueId}',this.dataset.name,this)" data-name="${customer.name}">
               <i class="ti ti-bolt"></i> Give
             </button>
           </div>
@@ -532,7 +532,7 @@ async function fetchQueue(){
           ${customer.points >= 100
             ? `<button
                 class="k-btn k-btn-teal k-btn-sm"
-                onclick="redeemPoints('${customer.phone}','${customer.queueId}',${JSON.stringify(customer.name)},${customer.points},this)">
+                onclick="redeemPoints('${customer.phone}','${customer.queueId}',this.dataset.name,${customer.points},this)" data-name="${customer.name}">
                 <i class="ti ti-gift"></i> Redeem
                </button>
                <div id="redeem-msg-${customer.phone}" style="margin-top:4px;"></div>`
