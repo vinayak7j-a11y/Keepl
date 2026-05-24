@@ -4,6 +4,25 @@ const QRCode = require("qrcode");
 const Shop = require("../models/Shop");
 
 /* =========================
+   QR GENERATOR — styled
+========================= */
+
+async function generateStyledQR(url) {
+  // Saffron on warm white — high contrast, branded, still scannable
+  const qrDataUrl = await QRCode.toDataURL(url, {
+    errorCorrectionLevel: "H",   // High — allows up to 30% of QR to be damaged/covered
+    type: "image/png",
+    width: 600,                  // High res for poster printing
+    margin: 2,
+    color: {
+      dark:  "#1A1A2E",          // Ink — dark modules
+      light: "#F7F6F2"           // Warm off-white background
+    }
+  });
+  return qrDataUrl;
+}
+
+/* =========================
    REGISTER SHOP
 ========================= */
 
@@ -38,9 +57,9 @@ exports.registerShop = async (req, res) => {
 
     const shopId = "SHOP" + Date.now();
 
-    // ✅ Generate QR code pointing to the shop's scan page
+    // ✅ Generate styled QR code pointing to the shop's scan page
     const scanUrl = `${process.env.BASE_URL}/scan/${shopId}`;
-    const qrCode = await QRCode.toDataURL(scanUrl);
+    const qrCode = await generateStyledQR(scanUrl);
 
     const shop = await Shop.create({
       name,
@@ -108,10 +127,10 @@ exports.loginShop = async (req, res) => {
       });
     }
 
-    // ✅ If QR is missing (old accounts), auto-generate it on login
-    if (!shop.qrCode) {
+    // ✅ If QR is missing or still old default style — regenerate on login
+    if (!shop.qrCode || shop.qrCode.includes('"dark":"#000000"') || !shop.qrCode.includes("1A1A2E")) {
       const scanUrl = `${process.env.BASE_URL}/scan/${shop.shopId}`;
-      shop.qrCode = await QRCode.toDataURL(scanUrl);
+      shop.qrCode = await generateStyledQR(scanUrl);
       await Shop.updateOne({ _id: shop._id }, { qrCode: shop.qrCode });
     }
 
