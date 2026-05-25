@@ -324,6 +324,9 @@ let isFetching = false;
 let activeInputPhone = null;
 let inputCache = {};
 
+// Dismissed search results
+const dismissedPhones = new Set();
+
 // Expiry tracking
 let previousQueuePhones = new Set();
 let lastQueueNames = {};
@@ -811,8 +814,9 @@ async function searchCustomer(query){
 
     const q = query.toLowerCase();
     const matched = customers.filter(c =>
-      (c.name || "").toLowerCase().includes(q) ||
-      (c.phone || "").includes(q)
+      !dismissedPhones.has(c.phone) &&
+      ((c.name || "").toLowerCase().includes(q) ||
+      (c.phone || "").includes(q))
     ).slice(0, 5);
 
     if(!matched.length){
@@ -850,7 +854,7 @@ async function searchCustomer(query){
           <button
             class="k-btn k-btn-sm"
             style="background:var(--k-bg);color:var(--k-ink-tertiary);border:0.5px solid var(--k-border);"
-            onclick="document.getElementById('search-row-${c.phone}').remove()">
+            onclick="dismissedPhones.add('${c.phone}'); document.getElementById('search-row-${c.phone}').remove()">
             <i class="ti ti-x"></i>
           </button>
         </div>
