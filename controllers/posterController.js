@@ -1,173 +1,101 @@
 const PDFDocument = require("pdfkit");
 const Shop = require("../models/Shop");
 
-/* =========================
-   DOWNLOAD QR POSTER
-========================= */
-
 exports.downloadPoster = async (req, res) => {
   try {
     const { shopId } = req.params;
 
-    if (!shopId) {
-      return res.status(400).send("ShopId required");
-    }
+    if (!shopId) return res.status(400).send("ShopId required");
 
     const shop = await Shop.findOne({ shopId }).lean();
+    if (!shop) return res.status(404).send("Shop not found");
+    if (!shop.qrCode) return res.status(400).send("QR code not available");
 
-    if (!shop) {
-      return res.status(404).send("Shop not found");
-    }
+    const safeName = (shop.name || "shop").replace(/[^a-z0-9]/gi, "_").toLowerCase();
 
-    if (!shop.qrCode) {
-      return res.status(400).send("QR code not available");
-    }
+    const doc = new PDFDocument({ size: "A4", margin: 0 });
 
-    /* ===== SAFE FILE NAME ===== */
-
-    const safeName = (shop.name || "shop")
-      .replace(/[^a-z0-9]/gi, "_")
-      .toLowerCase();
-
-    /* ===== PDF SETUP ===== */
-
-    const doc = new PDFDocument({
-      size: "A4",
-      margin: 0
-    });
-
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=${safeName}-qr-poster.pdf`
-    );
-
+    res.setHeader("Content-Disposition", `attachment; filename=${safeName}-qr-poster.pdf`);
     res.setHeader("Content-Type", "application/pdf");
-
     doc.pipe(res);
 
-    const W = 595.28;  // A4 width pts
-    const H = 841.89;  // A4 height pts
+    const W = 595.28;
+    const H = 841.89;
+    const rewardThreshold = shop.rewardThreshold || 100;
 
-    /* ===================================================
-       BACKGROUND
-    =================================================== */
-
-    // Warm off-white base
+    /* ── BACKGROUND ── */
     doc.rect(0, 0, W, H).fill("#F7F6F2");
-
-    // Saffron top section
-    doc.rect(0, 0, W, 310).fill("#FF6B00");
-
-    // Subtle diagonal accent on top section
-    doc.save();
-    doc.rect(0, 0, W, 310).clip();
-    doc
-      .moveTo(W * 0.55, 0)
-      .lineTo(W, 0)
-      .lineTo(W, 310)
-      .lineTo(W * 0.75, 310)
-      .fill("rgba(255,255,255,0.05)");
-    doc.restore();
-
-    // Dark ink footer
+    doc.rect(0, 0, W, 260).fill("#FF6B00");
     doc.rect(0, H - 60, W, 60).fill("#1A1A2E");
 
-    /* ===================================================
-       TOP SECTION — branding + shop name
-    =================================================== */
-
-    // keepl. wordmark
+    /* ── TOP BRANDING ── */
+    // keepl. wordmark — centered
     doc
-      .fontSize(42)
+      .fontSize(44)
       .fillColor("#FFFFFF")
       .font("Helvetica-Bold")
-      .text("keepl.", 0, 36, { align: "center" });
-
-    // Gold dot accent under wordmark
-    doc
-      .circle(W / 2 + 52, 46, 5)
-      .fill("#F5C518");
+      .text("keepl.", 0, 32, { align: "center", width: W });
 
     // Tagline
     doc
-      .fontSize(12)
-      .fillColor("rgba(255,255,255,0.75)")
+      .fontSize(11)
+      .fillColor("rgba(255,255,255,0.7)")
       .font("Helvetica")
-      .text("LOYALTY SIMPLIFIED", 0, 88, {
+      .text("LOYALTY SIMPLIFIED", 0, 84, {
         align: "center",
+        width: W,
         characterSpacing: 3
       });
 
-    // Divider line
+    // Divider
     doc
-      .moveTo(W / 2 - 60, 108)
-      .lineTo(W / 2 + 60, 108)
-      .strokeColor("rgba(255,255,255,0.3)")
+      .moveTo(W / 2 - 50, 103)
+      .lineTo(W / 2 + 50, 103)
+      .strokeColor("rgba(255,255,255,0.25)")
       .lineWidth(0.5)
       .stroke();
 
     // Shop name
     doc
-      .fontSize(26)
+      .fontSize(24)
       .fillColor("#FFFFFF")
       .font("Helvetica-Bold")
-      .text(shop.name, 48, 120, {
-        align: "center",
-        width: W - 96
-      });
+      .text(shop.name, 48, 115, { align: "center", width: W - 96 });
 
     // Shop subline
     doc
-      .fontSize(13)
-      .fillColor("rgba(255,255,255,0.8)")
+      .fontSize(12)
+      .fillColor("rgba(255,255,255,0.75)")
       .font("Helvetica")
-      .text("invites you to earn rewards on every visit", 0, 158, {
-        align: "center"
+      .text("Scan the QR code below to earn reward points", 0, 150, {
+        align: "center",
+        width: W
       });
 
-    /* ===================================================
-       WHITE CARD
-    =================================================== */
+    /* ── WHITE CARD ── */
+    const cardX = 36;
+    const cardY = 208;
+    const cardW = W - 72;
+    const cardH = 570;
 
-    const cardX = 40;
-    const cardY = 218;
-    const cardW = W - 80;
-    const cardH = 490;
+    // Shadow
+    doc.roundedRect(cardX + 2, cardY + 3, cardW, cardH, 18).fill("rgba(26,26,46,0.06)");
+    // Card
+    doc.roundedRect(cardX, cardY, cardW, cardH, 18).fill("#FFFFFF");
+    // Top accent
+    doc.roundedRect(cardX, cardY, cardW, 5, 2).fill("#FF6B00");
 
-    // Card shadow (simulated with slightly larger darker rect)
-    doc
-      .roundedRect(cardX + 2, cardY + 3, cardW, cardH, 18)
-      .fill("rgba(26,26,46,0.07)");
-
-    // Card body
-    doc
-      .roundedRect(cardX, cardY, cardW, cardH, 18)
-      .fill("#FFFFFF");
-
-    // Top accent bar
-    doc
-      .roundedRect(cardX, cardY, cardW, 5, 2)
-      .fill("#FF6B00");
-
-    /* ===================================================
-       QR CODE SECTION
-    =================================================== */
-
-    const qrSize = 186;
+    /* ── QR CODE ── */
+    const qrSize = 190;
     const qrX = (W - qrSize) / 2;
-    const qrY = cardY + 28;
+    const qrY = cardY + 24;
 
-    // QR frame — teal ring
-    doc
-      .roundedRect(qrX - 14, qrY - 14, qrSize + 28, qrSize + 28, 14)
-      .fill("#E0F2F0");
+    // Teal frame
+    doc.roundedRect(qrX - 14, qrY - 14, qrSize + 28, qrSize + 28, 14).fill("#E0F2F0");
+    // White bg
+    doc.roundedRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12, 10).fill("#FFFFFF");
 
-    // Inner white background for QR
-    doc
-      .roundedRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12, 10)
-      .fill("#FFFFFF");
-
-    // Corner decorations — saffron squares
+    // Corner dots
     const corners = [
       [qrX - 14, qrY - 14],
       [qrX + qrSize - 6, qrY - 14],
@@ -175,194 +103,154 @@ exports.downloadPoster = async (req, res) => {
       [qrX + qrSize - 6, qrY + qrSize - 6],
     ];
     corners.forEach(([cx, cy]) => {
-      doc.roundedRect(cx, cy, 20, 20, 4).fill("#FF6B00");
+      doc.roundedRect(cx, cy, 20, 20, 5).fill("#FF6B00");
     });
 
-    // QR code image
+    // QR image
     try {
-      doc.image(shop.qrCode, qrX, qrY, {
-        fit: [qrSize, qrSize],
-        align: "center"
-      });
-    } catch (imgErr) {
-      console.error("QR image error:", imgErr);
-      doc
-        .fontSize(13)
-        .fillColor("#EF4444")
-        .text("QR Code could not be loaded", { align: "center" });
+      doc.image(shop.qrCode, qrX, qrY, { fit: [qrSize, qrSize], align: "center" });
+    } catch (e) {
+      doc.fontSize(12).fillColor("#EF4444").text("QR Code unavailable", { align: "center" });
     }
 
-    // "Scan Me" label under QR
-    doc
-      .roundedRect(qrX + 30, qrY + qrSize + 10, qrSize - 60, 26, 13)
-      .fill("#FF6B00");
-
+    // SCAN ME pill
+    const scanPillX = qrX + 30;
+    const scanPillY = qrY + qrSize + 10;
+    doc.roundedRect(scanPillX, scanPillY, qrSize - 60, 26, 13).fill("#FF6B00");
     doc
       .fontSize(11)
       .fillColor("#FFFFFF")
       .font("Helvetica-Bold")
-      .text("SCAN ME", qrX + 30, qrY + qrSize + 17, {
+      .text("SCAN ME", scanPillX, scanPillY + 8, {
         align: "center",
         width: qrSize - 60,
-        characterSpacing: 1.5
+        characterSpacing: 2
       });
 
-    /* ===================================================
-       POINTS CALLOUT PILL
-    =================================================== */
-
-    const rewardThreshold = shop.rewardThreshold || 100;
-    const pillY = qrY + qrSize + 48;
-
-    doc
-      .roundedRect(cardX + 16, pillY, cardW - 32, 38, 19)
-      .fill("#FFF0E6");
-
+    /* ── POINTS PILL ── */
+    const pillY = scanPillY + 42;
+    doc.roundedRect(cardX + 16, pillY, cardW - 32, 36, 18).fill("#FFF0E6");
     doc
       .fontSize(12)
       .fillColor("#C24E00")
       .font("Helvetica-Bold")
       .text(
-        `⚡ 10 points per ₹100 spent   ·   🎁 ${rewardThreshold} points = free reward`,
-        cardX + 16,
-        pillY + 13,
+        `10 points per Rs.100 spent   |   ${rewardThreshold} points = free reward`,
+        cardX + 16, pillY + 12,
         { align: "center", width: cardW - 32 }
       );
 
-    /* ===================================================
-       WHY USE KEEPL — 3 benefit pills
-    =================================================== */
-
-    const benefitY = pillY + 54;
+    /* ── HOW IT WORKS ── */
+    const howY = pillY + 52;
 
     doc
       .fontSize(10)
       .fillColor("#9090A8")
       .font("Helvetica")
-      .text("WHY JOIN?", 0, benefitY, {
-        align: "center",
-        characterSpacing: 2
-      });
+      .text("HOW IT WORKS", 0, howY, { align: "center", width: W, characterSpacing: 2 });
 
-    const benefits = [
-      { icon: "★", text: "Get rewarded for every purchase" },
-      { icon: "♻", text: "Points never expire at this shop" },
-      { icon: "🎁", text: "Redeem for free rewards — no app needed" },
+    const steps = [
+      { num: "1", title: "Scan the QR code", desc: "Point your phone camera at the QR above" },
+      { num: "2", title: "Enter your details", desc: "Type your name and phone number once" },
+      { num: "3", title: "Get points on every bill", desc: "Shopkeeper adds points after payment" },
+      { num: "4", title: "Redeem your reward", desc: `Collect ${rewardThreshold} points and claim your free reward` },
     ];
 
-    const benefitStartY = benefitY + 18;
-    const benefitSpacing = 30;
+    const stepStartY = howY + 20;
+    const stepH = 48;
+    const stepPad = 8;
 
-    benefits.forEach((b, i) => {
-      const y = benefitStartY + i * benefitSpacing;
-      const bx = cardX + 24;
-      const bw = cardW - 48;
+    steps.forEach((step, i) => {
+      const y = stepStartY + i * (stepH + stepPad);
+      const bx = cardX + 16;
+      const bw = cardW - 32;
 
-      // Benefit row background
+      // Row bg
+      doc.roundedRect(bx, y, bw, stepH, 10).fill(i % 2 === 0 ? "#F7F6F2" : "#FFFFFF");
+
+      // Number circle
+      doc.circle(bx + 22, y + stepH / 2, 14).fill("#FF6B00");
       doc
-        .roundedRect(bx, y, bw, 24, 8)
-        .fill(i % 2 === 0 ? "#F7F6F2" : "#FFFFFF");
-
-      // Icon circle
-      doc
-        .circle(bx + 16, y + 12, 10)
-        .fill("#FF6B00");
-
-      doc
-        .fontSize(10)
+        .fontSize(12)
         .fillColor("#FFFFFF")
         .font("Helvetica-Bold")
-        .text(b.icon, bx + 9, y + 6, { width: 14, align: "center" });
+        .text(step.num, bx + 16, y + stepH / 2 - 7, { width: 12, align: "center" });
 
-      // Benefit text
+      // Title
       doc
         .fontSize(12)
         .fillColor("#1A1A2E")
-        .font("Helvetica")
-        .text(b.text, bx + 34, y + 7);
-    });
-
-    /* ===================================================
-       HOW IT WORKS — 3 steps
-    =================================================== */
-
-    const stepsY = benefitStartY + benefits.length * benefitSpacing + 20;
-
-    doc
-      .fontSize(10)
-      .fillColor("#9090A8")
-      .font("Helvetica")
-      .text("HOW IT WORKS", 0, stepsY, {
-        align: "center",
-        characterSpacing: 2
-      });
-
-    const steps = [
-      { num: "1", text: "Scan the QR code above" },
-      { num: "2", text: "Enter your name & phone number" },
-      { num: "3", text: "Points added after your bill is entered" },
-    ];
-
-    const stepStartY = stepsY + 18;
-    const stepSpacing = 30;
-    const lineX = W / 2 - 80;
-
-    steps.forEach((step, i) => {
-      const y = stepStartY + i * stepSpacing;
-
-      // Step number circle — teal
-      doc
-        .circle(lineX, y + 10, 11)
-        .fill("#00796B");
-
-      doc
-        .fontSize(11)
-        .fillColor("#FFFFFF")
         .font("Helvetica-Bold")
-        .text(step.num, lineX - 4, y + 4);
+        .text(step.title, bx + 46, y + 9);
+
+      // Description
+      doc
+        .fontSize(10)
+        .fillColor("#9090A8")
+        .font("Helvetica")
+        .text(step.desc, bx + 46, y + 26);
 
       // Connector line
       if (i < steps.length - 1) {
         doc
-          .moveTo(lineX, y + 21)
-          .lineTo(lineX, y + stepSpacing - 1)
-          .strokeColor("#E0F2F0")
-          .lineWidth(2)
+          .moveTo(bx + 22, y + stepH)
+          .lineTo(bx + 22, y + stepH + stepPad)
+          .strokeColor("#FFD4B3")
+          .lineWidth(1.5)
           .stroke();
       }
-
-      // Step text
-      doc
-        .fontSize(12)
-        .fillColor("#1A1A2E")
-        .font("Helvetica")
-        .text(step.text, lineX + 20, y + 4);
     });
 
-    /* ===================================================
-       FOOTER
-    =================================================== */
+    /* ── WHY JOIN ── */
+    const whyY = stepStartY + steps.length * (stepH + stepPad) + 10;
 
-    // keepl wordmark in footer
     doc
-      .fontSize(15)
+      .fontSize(10)
+      .fillColor("#9090A8")
+      .font("Helvetica")
+      .text("WHY JOIN?", 0, whyY, { align: "center", width: W, characterSpacing: 2 });
+
+    const benefits = [
+      "Free rewards — no app download needed",
+      "Points never expire at this shop",
+      "Instant WhatsApp confirmation after every visit",
+    ];
+
+    const benefitStartY = whyY + 18;
+
+    benefits.forEach((b, i) => {
+      const y = benefitStartY + i * 22;
+      const bx = cardX + 16;
+
+      doc.circle(bx + 8, y + 8, 5).fill("#00796B");
+      doc
+        .fontSize(11)
+        .fillColor("#1A1A2E")
+        .font("Helvetica")
+        .text(b, bx + 22, y + 2);
+    });
+
+    /* ── FOOTER ── */
+    doc
+      .fontSize(16)
       .fillColor("#FFFFFF")
       .font("Helvetica-Bold")
-      .text("keepl.", 0, H - 40, { align: "center" });
+      .text("keepl.", 0, H - 42, { align: "center", width: W });
 
     doc
       .fontSize(9)
-      .fillColor("rgba(255,255,255,0.45)")
+      .fillColor("rgba(255,255,255,0.4)")
       .font("Helvetica")
       .text("Turn every visit into a reward", 0, H - 22, {
         align: "center",
+        width: W,
         characterSpacing: 0.5
       });
 
     doc.end();
 
   } catch (error) {
-    console.error("Poster generation error:", error);
+    console.error("Poster error:", error);
     res.status(500).send("Error generating poster");
   }
 };
