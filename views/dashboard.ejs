@@ -1053,6 +1053,14 @@ setInterval(()=>{
 
 let deferredPrompt;
 
+// Show iOS hint if not installable and on iPhone
+if(/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.navigator.standalone){
+  const iosHint = document.createElement('div');
+  iosHint.style.cssText = 'font-size:12px;color:var(--k-ink-tertiary);text-align:center;padding:8px;';
+  iosHint.innerHTML = '📲 iPhone? Tap Share → <strong>Add to Home Screen</strong>';
+  document.getElementById('installBtn').parentElement.appendChild(iosHint);
+}
+
 window.addEventListener("beforeinstallprompt",(e)=>{
   e.preventDefault();
   deferredPrompt = e;
