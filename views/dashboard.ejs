@@ -783,6 +783,12 @@ async function givePoints(phone, queueId, customerName, btn){
           style="margin-left:6px;"
           onclick="sendWhatsApp('${phone}',${JSON.stringify(customerName)},${earned},${total},${spent})">
           📲 WhatsApp
+        </button>
+        <button
+          class="k-btn k-btn-sm"
+          style="margin-left:6px;background:var(--k-danger-lt);color:var(--k-danger);border:none;"
+          onclick="undoPoints('${phone}', this)">
+          ↩ Undo
         </button>`;
 
       sendWhatsApp(phone, customerName, earned, total, spent);
@@ -1037,6 +1043,49 @@ async function givePointsManual(phone, customerName, btn){
   btn.disabled = false;
   btn.innerHTML = '<i class="ti ti-bolt"></i> Give';
   activeInputPhone = null;
+}
+
+
+/* =========================
+   UNDO LAST TRANSACTION
+========================= */
+
+async function undoPoints(phone, btn){
+  if(!confirm("Undo last points given to this customer?")) return;
+
+  btn.disabled = true;
+  btn.innerText = "...";
+
+  const shopId = "<%= shop.shopId %>";
+
+  try{
+    const res = await fetch(`${BASE_URL}/api/transactions/undo`, {
+      method: "POST",
+      headers:{
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ phone, shopId })
+    });
+
+    const data = await res.json();
+
+    if(res.ok){
+      const msg = document.getElementById(`msg-${phone}`);
+      if(msg) msg.innerHTML = `<span style="color:var(--k-danger);font-size:13px;">↩ Undone — ${data.pointsRemoved} pts removed</span>`;
+      setTimeout(fetchQueue, 1000);
+    } else {
+      alert(data.message || "Could not undo");
+      btn.disabled = false;
+      btn.innerText = "↩ Undo";
+    }
+
+  }catch(err){
+    console.error("Undo error:", err);
+    alert("Server error");
+    btn.disabled = false;
+    btn.innerText = "↩ Undo";
+  }
 }
 
 setInterval(fetchLiveStats, 30000);

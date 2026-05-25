@@ -185,11 +185,99 @@ const getTransactions = async (req, res) => {
 };
 
 
+
+/* =========================
+   UNDO LAST TRANSACTION
+========================= */
+
+const undoTransaction = async (req, res) => {
+  try {
+    const { phone, shopId } = req.body;
+
+    if (!phone || !shopId) {
+      return res.status(400).json({ message: "Phone and shopId required" });
+    }
+
+    const shop = await Shop.findOne({ shopId }).lean();
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    const user = await User.findOne({ phone }).lean();
+    if (!user) return res.status(404).json({ message: "Customer not found" });
+
+    // Find last earn transaction within 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+    const lastTransaction = await Transaction.findOne({
+      shopId: shop._id,
+      userId: user._id,
+      type: "earn",
+      createdAt: { $gte: fiveMinutesAgo }
+    }).sort({ createdAt: -1 });
+
+    if (!lastTransaction) {
+      return res.status(400).json({
+        message: "No transaction to undo. Undo is only available within 5 minutes."
+      });
+    }
+
+    const points = lastTransaction.points;
+    const amount = lastTransaction.billAmount;
+
+    // Reverse wallet
+    await Wallet.findOneAndUpdate(
+      { userId: user._id, shopId: shop._id },
+      {
+        $inc: { points: -points, totalEarned: -points },
+        $set: { lastTransaction: new Date() }
+      }
+    );
+
+    // Reverse user stats
+    await User.findOneAndUpdate(
+      { _id: user._id },
+      {
+        $inc: {
+          totalSpent: -amount,
+          totalPointsEarned: -points,
+          totalVisits: -1
+        }
+      }
+    );
+
+    // Reverse shop stats
+    await Shop.findOneAndUpdate(
+      { _id: shop._id },
+      {
+        $inc: {
+          totalTransactions: -1,
+          totalPointsIssued: -points,
+          totalRevenue: -amount
+        }
+      }
+    );
+
+    // Delete the transaction
+    await Transaction.findByIdAndDelete(lastTransaction._id);
+
+    res.json({
+      success: true,
+      message: `Undone — ${points} pts removed`,
+      pointsRemoved: points,
+      billAmount: amount
+    });
+
+  } catch (error) {
+    console.error("Undo error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 /* =========================
    EXPORT
 ========================= */
 
 module.exports = {
   addTransaction,
-  getTransactions
+  getTransactions,
+  undoTransaction
 };
