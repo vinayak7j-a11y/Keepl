@@ -132,11 +132,58 @@ input[type="number"]:focus {
 }
 
 @media (max-width: 600px) {
+  /* Nav */
   #navLinks { display: none !important; }
+  .k-nav { padding: 0 12px; height: 52px; }
+  .k-nav-actions { gap: 6px; }
+  .k-btn-sm { padding: 6px 10px; font-size: 12px; }
+
+  /* Page */
   body { padding: 0; }
-  table { font-size: 13px; }
-  input[type="number"] { width: 90px; }
-  th, td { padding: 10px 8px; }
+  .k-page { padding: 12px 12px 40px; }
+
+  /* Stat cards */
+  .k-stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .k-stat-num { font-size: 26px; }
+
+  /* Cards */
+  .k-card { padding: 16px 12px; margin-bottom: 14px; }
+
+  /* Search */
+  #customerSearchInput { font-size: 16px; }
+
+  /* Queue table — stack on mobile */
+  table { display: block; }
+  thead { display: none; }
+  tbody { display: block; }
+  tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--k-surface);
+    border: 0.5px solid var(--k-border);
+    border-radius: var(--k-r-md);
+    padding: 12px;
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  td {
+    display: flex;
+    align-items: center;
+    padding: 0;
+    border: none;
+    font-size: 13px;
+  }
+
+  /* Bill input full width on mobile */
+  input[type="number"] { width: 100%; font-size: 16px; }
+
+  /* Give and Redeem buttons full width */
+  .k-queue-actions { width: 100%; }
+  .k-queue-actions .k-btn { flex: 1; justify-content: center; }
+
+  /* Settings */
+  .settings-row { flex-direction: column; align-items: flex-start; }
+  .settings-row input[type="number"] { width: 100%; }
 }
 </style>
 
