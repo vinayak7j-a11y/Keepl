@@ -42,4 +42,9 @@ router.post("/login", (req, res, next) => {
 // ✅ Update reward threshold
 router.patch("/:shopId/reward-threshold", authMiddleware, shopController.updateRewardThreshold);
 
+// ✅ Admin password reset (manual, for trial period)
+router.post("/reset-password", shopController.resetPassword);
+
 module.exports = router;
+// ✅ Admin password reset
+router.post("/reset-password", shopController.resetPassword);

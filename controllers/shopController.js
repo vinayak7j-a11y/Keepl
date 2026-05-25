@@ -197,3 +197,48 @@ exports.updateRewardThreshold = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+/* =========================
+   ADMIN PASSWORD RESET
+   POST /api/shops/reset-password
+========================= */
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { phone, newPassword, adminSecret } = req.body;
+
+    // ✅ Protect with admin secret — change this to something only you know
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!phone || !newPassword) {
+      return res.status(400).json({ message: "Phone and new password required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    const shop = await Shop.findOne({ phone });
+
+    if (!shop) {
+      return res.status(404).json({ message: "Shop not found with this phone number" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await Shop.updateOne({ phone }, { password: hashedPassword });
+
+    console.log(`✅ Password reset for shop: ${shop.name} (${phone})`);
+
+    res.json({
+      message: "Password reset successful",
+      shop: shop.name,
+      phone: shop.phone
+    });
+
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
