@@ -823,7 +823,7 @@ async function searchCustomer(query){
     resultDiv.innerHTML = matched.map(c => {
       const initials = c.name ? c.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) : "?";
       return `
-      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:0.5px solid var(--k-border);">
+      <div id="search-row-${c.phone}" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:0.5px solid var(--k-border);">
         <div style="width:40px;height:40px;border-radius:10px;background:var(--k-saffron-lt);color:var(--k-saffron-dk);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;flex-shrink:0;">
           ${initials}
         </div>
