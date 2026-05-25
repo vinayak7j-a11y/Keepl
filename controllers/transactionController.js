@@ -33,6 +33,12 @@ const addTransaction = async (req, res) => {
       });
     }
 
+    if (amount > 100000) {
+      return res.status(400).json({
+        message: "Bill amount cannot exceed ₹1,00,000"
+      });
+    }
+
     /* ===== FIND SHOP ===== */
 
     const shop = await Shop.findOne({ shopId });
