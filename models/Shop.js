@@ -69,14 +69,6 @@ const shopSchema = new mongoose.Schema({
     maxlength: 80
   },
 
-  // ✅ What the reward actually is — shown to customers
-  rewardName: {
-    type: String,
-    default: "Free reward",
-    trim: true,
-    maxlength: 80
-  },
-
   isActive: {
     type: Boolean,
     default: true
