@@ -57,7 +57,7 @@ exports.downloadPoster = async (req, res) => {
     doc.roundedRect(cardX, cardY, cardW, 4, 2).fill("#FF6B00");
 
     /* ── QR CODE — bigger to fill space ── */
-    const qrSize = 200;
+    const qrSize = 180;
     const qrX = (W - qrSize) / 2;
     const qrY = cardY + 20;
 
@@ -104,8 +104,8 @@ exports.downloadPoster = async (req, res) => {
     ];
 
     const stepStartY = howY + 16;
-    const stepH = 44;
-    const stepGap = 6;
+    const stepH = 40;
+    const stepGap = 5;
 
     steps.forEach((step, i) => {
       const y = stepStartY + i * (stepH + stepGap);
@@ -129,30 +129,12 @@ exports.downloadPoster = async (req, res) => {
         .text(step.desc, bx + 46, y + 25);
     });
 
-    /* ── WHY JOIN ── */
-    const whyY = stepStartY + steps.length * (stepH + stepGap) + 16;
-    doc.fontSize(9).fillColor("#9090A8").font("Helvetica")
-      .text("WHY JOIN?", 0, whyY, { align: "center", width: W, characterSpacing: 2 });
-
-    const benefits = [
-      "No app download needed — just scan and go",
-      "Points never expire at this shop",
-      "Get a WhatsApp message after every visit",
-    ];
-
-    const benefitStartY = whyY + 14;
-    const benefitH = 28;
-
-    benefits.forEach((b, i) => {
-      const y = benefitStartY + i * benefitH;
-      const bx = cardX + 16;
-      const bw = cardW - 32;
-
-      doc.roundedRect(bx, y, bw, 22, 6).fill(i % 2 === 0 ? "#E0F2F0" : "#F7F6F2");
-      doc.circle(bx + 14, y + 11, 5).fill("#00796B");
-      doc.fontSize(11).fillColor("#1A1A2E").font("Helvetica")
-        .text(b, bx + 28, y + 6);
-    });
+    /* ── BOTTOM NOTE ── */
+    const whyY = stepStartY + steps.length * (stepH + stepGap) + 20;
+    doc.roundedRect(cardX + 14, whyY, cardW - 28, 32, 10).fill("#E0F2F0");
+    doc.fontSize(11).fillColor("#00796B").font("Helvetica-Bold")
+      .text("No app needed  |  Points never expire  |  WhatsApp updates", cardX + 14, whyY + 11,
+        { align: "center", width: cardW - 28 });
 
     /* ── FOOTER ── */
     doc.rect(0, H - 56, W, 56).fill("#1A1A2E");
