@@ -97,8 +97,8 @@ exports.downloadPoster = async (req, res) => {
 
     /* 4 steps × 42px each = 168px, starts at 454, ends at 622 */
     const stepStartY = howY + 14;
-    const stepH = 38;
-    const stepGap = 5;
+    const stepH = 50;
+    const stepGap = 8;
 
     steps.forEach((step, i) => {
       const y = stepStartY + i * (stepH + stepGap);
@@ -124,10 +124,11 @@ exports.downloadPoster = async (req, res) => {
 
     /* ── BOTTOM NOTE: y=634 → 666 ── */
     const noteY = stepStartY + steps.length * (stepH + stepGap) + 14;
-    doc.roundedRect(cardX + 14, noteY, cardW - 28, 30, 10).fill("#E0F2F0");
-    doc.fontSize(10.5).fillColor("#004D40").font("Helvetica-Bold")
-      .text("No app needed  |  Points never expire  |  WhatsApp updates",
-        cardX + 14, noteY + 10, { align: "center", width: cardW - 28 });
+    doc.roundedRect(cardX + 14, noteY, cardW - 28, 56, 12).fill("#E0F2F0");
+    doc.fontSize(12).fillColor("#004D40").font("Helvetica-Bold")
+      .text("No app needed  |  Points never expire", cardX + 14, noteY + 12, { align: "center", width: cardW - 28 });
+    doc.fontSize(11).fillColor("#00796B").font("Helvetica")
+      .text("Get a WhatsApp message after every visit", cardX + 14, noteY + 32, { align: "center", width: cardW - 28 });
 
     /* ── FOOTER: 785 → 841 ── */
     doc.rect(0, H - 56, W, 56).fill("#1A1A2E");
