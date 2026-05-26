@@ -49,5 +49,3 @@ router.patch("/:shopId/reward-name", authMiddleware, shopController.updateReward
 router.post("/reset-password", shopController.resetPassword);
 
 module.exports = router;
-// ✅ Admin password reset
-router.post("/reset-password", shopController.resetPassword);
