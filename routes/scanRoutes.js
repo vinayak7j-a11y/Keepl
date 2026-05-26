@@ -28,7 +28,7 @@ router.get("/thankyou", async (req, res) => {
     }
 
     // ✅ Fetch rewardThreshold alongside shop name
-    const shop = await Shop.findOne({ shopId }).select("name rewardThreshold").lean();
+    const shop = await Shop.findOne({ shopId }).select("name rewardThreshold rewardName").lean();
 
     console.log("🏪 Shop lookup result:", shop);
 
@@ -37,6 +37,7 @@ router.get("/thankyou", async (req, res) => {
     }
 
     const rewardThreshold = shop.rewardThreshold || 100;
+    const rewardName = shop.rewardName || "Free reward";
 
     const safeShopName = String(shop.name)
       .replace(/&/g, "&amp;")
@@ -316,13 +317,13 @@ router.get("/thankyou", async (req, res) => {
 
   <!-- Redeem banner -->
   <div class="redeem-banner" id="redeemBanner">
-    🎁 You have enough points to redeem a free reward! Tell the shopkeeper.
+    🎁 You have enough points to redeem <strong>${rewardName}</strong>! Tell the shopkeeper.
   </div>
 
   <!-- Info box -->
   <div class="info">
     <div>⚡ Earn <strong>10 points</strong> for every <strong>₹100</strong> spent</div>
-    <div>🎁 Redeem <strong>${rewardThreshold} points</strong> for a free reward!</div>
+    <div>🎁 Redeem <strong>${rewardThreshold} points</strong> for <strong>${rewardName}</strong>!</div>
   </div>
 
   <div class="footer">
@@ -362,7 +363,7 @@ router.get("/thankyou", async (req, res) => {
 
       if (points >= REWARD_THRESHOLD) {
         fill.classList.add("complete");
-        label.innerHTML = "🎁 <strong>You've reached " + REWARD_THRESHOLD + " points!</strong> Ask for your free reward.";
+        label.innerHTML = "🎁 <strong>You've reached " + REWARD_THRESHOLD + " points!</strong> Ask for your <strong>${rewardName}</strong>!";
         document.getElementById("redeemBanner").style.display = "block";
       } else {
         const needed = REWARD_THRESHOLD - points;
@@ -414,6 +415,7 @@ router.get("/:shopId", async (req, res) => {
     console.log("🔍 Scan page requested for shopId:", shopId);
 
     const shop = await Shop.findOne({ shopId }).lean();
+    const rewardName = shop.rewardName || "Free reward";
 
     if (!shop) {
       return res.status(404).send("Shop not found");
@@ -656,7 +658,7 @@ router.get("/:shopId", async (req, res) => {
 
   <div class="info">
     <div>⚡ Earn <strong>10 points</strong> per ₹100 spent</div>
-    <div>🎁 <strong>${rewardThreshold} points</strong> = free reward!</div>
+    <div>🎁 <strong>${rewardThreshold} points</strong> = <strong>${rewardName}</strong>!</div>
   </div>
 
   <div class="footer">

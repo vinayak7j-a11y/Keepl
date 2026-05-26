@@ -579,6 +579,48 @@ async function saveRewardThreshold(){
   }
 }
 
+
+/* =========================
+   SAVE REWARD NAME
+========================= */
+
+async function saveRewardName(){
+  const input = document.getElementById("rewardNameInput");
+  const msg = document.getElementById("rewardNameMsg");
+  const value = input.value.trim();
+
+  msg.innerHTML = "";
+
+  if(!value){
+    msg.innerHTML = "<span class='error'>Please enter a reward name</span>";
+    return;
+  }
+
+  try{
+    const shopId = "<%= shop.shopId %>";
+    const res = await fetch(`${BASE_URL}/api/shops/${shopId}/reward-name`, {
+      method: "PATCH",
+      headers:{
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ rewardName: value })
+    });
+
+    const data = await res.json();
+
+    if(res.ok){
+      msg.innerHTML = `<span class="success">✓ Saved! Customers will see "${data.rewardName}" as their reward goal.</span>`;
+    } else {
+      msg.innerHTML = `<span class="error">${data.message || "Failed to save"}</span>`;
+    }
+
+  }catch(err){
+    console.error("Save reward name error:", err);
+    msg.innerHTML = "<span class='error'>Server error. Try again.</span>";
+  }
+}
+
 /* =========================
    TOGGLE REWARD SETTINGS
 ========================= */

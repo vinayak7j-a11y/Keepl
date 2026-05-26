@@ -242,3 +242,39 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+/* =========================
+   UPDATE REWARD NAME
+   PATCH /api/shops/:shopId/reward-name
+========================= */
+
+exports.updateRewardName = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const { rewardName } = req.body;
+
+    if (req.shopId !== shopId) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    if (!rewardName || rewardName.trim().length === 0) {
+      return res.status(400).json({ message: "Reward name cannot be empty" });
+    }
+
+    if (rewardName.length > 80) {
+      return res.status(400).json({ message: "Reward name too long (max 80 chars)" });
+    }
+
+    await Shop.updateOne({ shopId }, { rewardName: rewardName.trim() });
+
+    res.json({
+      message: "Reward name updated",
+      rewardName: rewardName.trim()
+    });
+
+  } catch (error) {
+    console.error("Update reward name error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+

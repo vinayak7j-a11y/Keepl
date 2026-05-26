@@ -42,6 +42,9 @@ router.post("/login", (req, res, next) => {
 // ✅ Update reward threshold
 router.patch("/:shopId/reward-threshold", authMiddleware, shopController.updateRewardThreshold);
 
+// ✅ Update reward name
+router.patch("/:shopId/reward-name", authMiddleware, shopController.updateRewardName);
+
 // ✅ Admin password reset (manual, for trial period)
 router.post("/reset-password", shopController.resetPassword);
 
