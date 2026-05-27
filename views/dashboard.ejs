@@ -484,7 +484,7 @@ function showWaFallback(phone, message){
     display:flex;align-items:center;justify-content:center;padding:20px;
   `;
 
-  modal.innerHTML = \`
+  modal.innerHTML = `
     <div style="background:#fff;border-radius:20px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
         <div style="width:36px;height:36px;background:#E8FFF3;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">📲</div>
@@ -497,7 +497,7 @@ function showWaFallback(phone, message){
       <div style="background:var(--k-bg);border:0.5px solid var(--k-border);border-radius:12px;padding:14px;font-size:13px;color:var(--k-ink-secondary);line-height:1.7;white-space:pre-wrap;max-height:200px;overflow-y:auto;">\${message}</div>
       <div style="display:flex;gap:10px;margin-top:16px;">
         <button
-          onclick="navigator.clipboard.writeText(\\`\${message.replace(/\`/g, '')}\\`).then(()=>{ this.innerText='Copied!'; setTimeout(()=>{ this.innerHTML='<i class=\'ti ti-copy\'></i> Copy message'; },2000); })"
+          onclick="navigator.clipboard.writeText(message).then(()=>{ this.innerText='Copied!'; setTimeout(()=>{ this.innerHTML='<i class=\'ti ti-copy\'></i> Copy message'; },2000); })"
           style="flex:1;background:var(--k-saffron);color:#fff;border:none;padding:11px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
           <i class="ti ti-copy"></i> Copy message
         </button>
@@ -507,7 +507,7 @@ function showWaFallback(phone, message){
         </a>
       </div>
     </div>
-  \`;
+  `;
 
   modal.addEventListener("click", (e) => {
     if(e.target === modal) modal.remove();
