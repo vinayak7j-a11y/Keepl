@@ -234,6 +234,52 @@ input[type="number"]:focus {
       Welcome back — here's your dashboard
     </p>
   </div>
+<!-- ── Onboarding Checklist ── -->
+<div id="onboardingChecklist" style="display:none;margin-bottom:24px;">
+  <div class="k-card" style="border-left:3px solid var(--k-saffron);padding:18px 20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <i class="ti ti-rocket" style="color:var(--k-saffron);font-size:18px;"></i>
+        <span style="font-size:15px;font-weight:500;color:var(--k-ink);">Get started with Keepl</span>
+      </div>
+      <button onclick="dismissChecklist()" style="background:none;border:none;cursor:pointer;color:var(--k-ink-tertiary);font-size:18px;padding:0;line-height:1;">✕</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;" id="checklistSteps">
+
+      <!-- Step 1 -->
+      <div id="step1" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--k-r-md);background:var(--k-bg);border:0.5px solid var(--k-border);">
+        <div id="step1-icon" style="width:28px;height:28px;border-radius:50%;border:2px solid var(--k-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;color:var(--k-ink-tertiary);">1</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:500;color:var(--k-ink);">Print your QR poster</div>
+          <div style="font-size:12px;color:var(--k-ink-tertiary);">Stick it at your counter so customers can scan</div>
+        </div>
+        <a href="/poster/<%= shop.shopId %>">
+          <button class="k-btn k-btn-ghost k-btn-sm"><i class="ti ti-qrcode"></i> Open Poster</button>
+        </a>
+      </div>
+
+      <!-- Step 2 -->
+      <div id="step2" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--k-r-md);background:var(--k-bg);border:0.5px solid var(--k-border);">
+        <div id="step2-icon" style="width:28px;height:28px;border-radius:50%;border:2px solid var(--k-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;color:var(--k-ink-tertiary);">2</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:500;color:var(--k-ink);">Get your first customer to scan</div>
+          <div style="font-size:12px;color:var(--k-ink-tertiary);">They scan the QR, fill their name and phone</div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div id="step3" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--k-r-md);background:var(--k-bg);border:0.5px solid var(--k-border);">
+        <div id="step3-icon" style="width:28px;height:28px;border-radius:50%;border:2px solid var(--k-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;color:var(--k-ink-tertiary);">3</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:500;color:var(--k-ink);">Give your first points</div>
+          <div style="font-size:12px;color:var(--k-ink-tertiary);">Enter their bill amount and hit Give</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div> 
 
   <!-- ── Stat cards ── -->
   <div class="k-stat-grid">
@@ -1121,6 +1167,56 @@ async function givePointsManual(phone, customerName, btn){
   btn.innerHTML = '<i class="ti ti-bolt"></i> Give';
   activeInputPhone = null;
 }
+ 
+/* =========================
+   ONBOARDING CHECKLIST
+========================= */
+
+async function loadOnboardingChecklist(){
+  // If dismissed before, don't show
+  if(localStorage.getItem('keepl_onboarding_dismissed') === '1') return;
+
+  try{
+    const shopId = "<%= shop.shopId %>";
+    const res = await fetch(`${BASE_URL}/dashboard/onboarding-status/${shopId}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if(!res.ok) return;
+    const s = await res.json();
+
+    // All 3 done — hide permanently
+    if(s.hasQR && s.hasFirstCustomer && s.hasFirstPoints){
+      localStorage.setItem('keepl_onboarding_dismissed', '1');
+      return;
+    }
+
+    // Mark completed steps
+    function markDone(stepId){
+      const icon = document.getElementById(stepId + '-icon');
+      const row  = document.getElementById(stepId);
+      if(!icon || !row) return;
+      icon.innerHTML = '✓';
+      icon.style.cssText += 'border-color:var(--k-teal);background:var(--k-teal-lt);color:var(--k-teal-dk);font-size:14px;';
+      row.style.opacity = '0.6';
+    }
+
+    if(s.hasQR)             markDone('step1');
+    if(s.hasFirstCustomer)  markDone('step2');
+    if(s.hasFirstPoints)    markDone('step3');
+
+    document.getElementById('onboardingChecklist').style.display = 'block';
+
+  }catch(err){
+    console.log('Onboarding check error:', err);
+  }
+}
+
+function dismissChecklist(){
+  localStorage.setItem('keepl_onboarding_dismissed', '1');
+  document.getElementById('onboardingChecklist').style.display = 'none';
+}
+
+loadOnboardingChecklist(); 
 
 
 /* =========================

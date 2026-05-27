@@ -180,10 +180,35 @@ const getLiveStats = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+/* =========================
+   ONBOARDING STATUS API
+========================= */
 
+const getOnboardingStatus = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+
+    const shop = await Shop.findOne({ shopId }).select('qrCode').lean();
+    if (!shop) return res.status(404).json({ message: 'Shop not found' });
+
+    const firstCustomer = await CustomerQueue.findOne({ shopId: shop._id }).lean();
+    const firstPoints   = await Transaction.findOne({ shopId: shop._id, type: 'earn' }).lean();
+
+    res.json({
+      hasQR:             !!shop.qrCode,
+      hasFirstCustomer:  !!firstCustomer,
+      hasFirstPoints:    !!firstPoints
+    });
+
+  } catch (err) {
+    console.error('Onboarding status error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 module.exports = {
   getDashboard,
   getCustomersPage,
-  getLiveStats
+  getLiveStats,
+  getOnboardingStatus
 };

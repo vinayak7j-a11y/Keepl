@@ -7,14 +7,15 @@ if (
   !dashboardController ||
   typeof dashboardController.getDashboard !== "function" ||
   typeof dashboardController.getCustomersPage !== "function" ||
-  typeof dashboardController.getLiveStats !== "function"
+  typeof dashboardController.getLiveStats !== "function" ||
+  typeof dashboardController.getOnboardingStatus !== "function"
 ) {
   console.error("❌ DashboardController error:", dashboardController);
   throw new Error("DashboardController not loaded properly");
 }
 
-router.get("/stats/:shopId", authMiddleware, dashboardController.getLiveStats);
+router.get("/stats/:shopId", authMiddleware, dashboardController.getLiveStats); 
+router.get("/onboarding-status/:shopId", authMiddleware, dashboardController.getOnboardingStatus);
 router.get("/customers/:shopId", dashboardController.getCustomersPage);
-router.get("/:shopId", dashboardController.getDashboard);
-
+router.get("/:shopId", dashboardController.getDashboard); 
 module.exports = router;
