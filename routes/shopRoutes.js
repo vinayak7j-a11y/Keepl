@@ -45,6 +45,9 @@ router.patch("/:shopId/reward-threshold", authMiddleware, shopController.updateR
 // ✅ Update reward name
 router.patch("/:shopId/reward-name", authMiddleware, shopController.updateRewardName);
 
+// ✅ Get shop QR code
+router.get("/:shopId/qr", authMiddleware, shopController.getShopQR);
+
 // ✅ Admin password reset (manual, for trial period)
 router.post("/reset-password", shopController.resetPassword);
 

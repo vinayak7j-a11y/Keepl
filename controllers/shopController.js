@@ -278,3 +278,20 @@ exports.updateRewardName = async (req, res) => {
   }
 };
 
+
+/* =========================
+   GET SHOP QR
+   GET /api/shops/:shopId/qr
+========================= */
+
+exports.getShopQR = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const shop = await Shop.findOne({ shopId }).select('qrCode').lean();
+    if(!shop) return res.status(404).json({ message: 'Shop not found' });
+    res.json({ qrCode: shop.qrCode || null });
+  } catch(err) {
+    console.error('QR fetch error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
