@@ -1000,22 +1000,36 @@ async function redeemPoints(phone, queueId, customerName, currentPoints, btn){
 /* =========================
    AUTO REFRESH
 ========================= */
-
-fetchQueue();
-fetchLiveStats();
-loadQR();
-
-function loadQR(){
-  const qr = localStorage.getItem('qrCode');
+async function loadQR(){
   const img = document.getElementById('shopQRImg');
   const missing = document.getElementById('qrMissing');
-  if(qr && img){
-    img.src = qr;
+
+  const cached = localStorage.getItem('qrCode');
+  if(cached){
+    img.src = cached;
     img.style.display = 'block';
-  } else if(missing){
+    return;
+  }
+
+  try{
+    const shopId = "<%= shop.shopId %>";
+    const res = await fetch(`${BASE_URL}/api/shops/${shopId}/qr`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if(!res.ok) throw new Error("QR fetch failed");
+    const data = await res.json();
+    if(data.qrCode){
+      localStorage.setItem('qrCode', data.qrCode);
+      img.src = data.qrCode;
+      img.style.display = 'block';
+    } else {
+      missing.style.display = 'block';
+    }
+  }catch(err){
+    console.error("QR load error:", err);
     missing.style.display = 'block';
   }
-}
+} 
 
 /* =========================
    MANUAL CUSTOMER SEARCH
