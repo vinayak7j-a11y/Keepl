@@ -357,7 +357,7 @@ input[type="number"]:focus {
         <div>
           <div style="font-size:14px;font-weight:500;color:var(--k-ink);">Reward Settings</div>
           <div style="font-size:13px;color:var(--k-ink-tertiary);">
-            Customers need <strong id="thresholdDisplay"><%= shop.rewardThreshold || 100 %></strong> points for a free reward
+            Customers need <strong id="thresholdDisplay"><%= shop.rewardThreshold || 100 %></strong> points for <strong id="rewardNameDisplay"><%= shop.rewardName || 'Free reward' %></strong>
           </div>
         </div>
       </div>
@@ -656,7 +656,8 @@ async function saveRewardName(){
     const data = await res.json();
 
     if(res.ok){
-      msg.innerHTML = `<span class="success">✓ Saved! Customers will see "${data.rewardName}" as their reward goal.</span>`;
+      msg.innerHTML = `<span class="success">✓ Saved! Customers will see "${data.rewardName}" as their reward goal.</span>`; 
+      document.getElementById('rewardNameDisplay').innerText = data.rewardName;
     } else {
       msg.innerHTML = `<span class="error">${data.message || "Failed to save"}</span>`;
     }
