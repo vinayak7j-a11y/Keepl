@@ -1,6 +1,9 @@
 console.log("🚀 SERVER VERSION: V2 FIXED ROUTING");
 require("dotenv").config();
 
+const Sentry = require("@sentry/node");
+Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 1.0 }); 
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -158,7 +161,9 @@ app.use((req, res) => {
 </body>
 </html>`);
 });
-
+Sentry.setupExpressErrorHandler(app);
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
 /* =========================
    ERROR HANDLER
 ========================= */
