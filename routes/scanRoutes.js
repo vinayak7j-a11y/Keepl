@@ -648,7 +648,13 @@ router.get("/:shopId", async (req, res) => {
         pattern="[0-9]{10}" inputmode="numeric" required autocomplete="tel"/>
     </div>
 
-    <input type="hidden" name="shopId" value="${shopId}"/>
+    <!-- ✅ Consent checkbox -->
+    <div class="consent-group" style="margin-bottom:16px;text-align:left;">
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+        <input type="checkbox" name="consent" required style="width:18px;height:18px;min-width:18px;margin-top:2px;accent-color:var(--k-saffron);cursor:pointer;"/>
+        <span style="font-size:13px;color:var(--k-ink-secondary);line-height:1.5;">I agree to share my name and phone number with <strong>${shopName}</strong> for loyalty rewards. <a href="/scan/privacy" target="_blank" style="color:var(--k-saffron);text-decoration:none;">Privacy policy</a></span>
+      </label>
+    </div>
 
     <button type="submit" id="submitBtn">
       <i class="ti ti-bolt"></i> Join &amp; Earn Points
@@ -729,6 +735,10 @@ router.post("/capture", async (req, res) => {
       return res.status(400).send("Phone number must be 10 digits");
     }
 
+    if (!req.body.consent) {
+      return res.status(400).send("Please accept the consent to continue");
+    }
+
     const shop = await Shop.findOne({ shopId });
 
     if (!shop) {
@@ -779,4 +789,9 @@ router.post("/capture", async (req, res) => {
   }
 });
 
+
+router.get("/privacy", (req, res) => {
+  const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  res.send(`<!DOCTYPE html><html><head><title>Privacy Policy — Keepl</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Arial,sans-serif;background:#F7F6F2;color:#1A1A2E;padding:40px 20px;}.wrap{max-width:560px;margin:0 auto;}h1{font-size:22px;font-weight:500;margin-bottom:6px;}.updated{font-size:13px;color:#9090A8;margin-bottom:28px;}h2{font-size:15px;font-weight:500;margin:24px 0 8px;}p{font-size:14px;color:#4A4A6A;line-height:1.7;}a{color:#FF6B00;}</style></head><body><div class="wrap"><h1>Privacy Policy</h1><p class="updated">Last updated: ${date}</p><h2>What we collect</h2><p>When you scan a shop QR code on Keepl, we collect your name and phone number to manage your loyalty rewards account.</p><h2>How we use it</h2><p>Your details are shared only with the shop you scan at. We use your phone to send points updates via WhatsApp.</p><h2>What we do not do</h2><p>We do not sell your data to any third party or use it for advertising.</p><h2>Contact us</h2><p>Questions? WhatsApp us at <a href="https://wa.me/919285273124">+91 92852 73124</a>.</p><p style="margin-top:24px;"><a href="javascript:history.back()" style="font-size:13px;color:#9090A8;">← Go back</a></p></div></body></html>`);
+});
 module.exports = router;
