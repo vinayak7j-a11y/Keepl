@@ -444,7 +444,7 @@ function playQueuePing(){
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.4);
   }catch(e){
-    console.log("Audio not available:", e);
+    console.error("Audio not available:", e);
   }
 }
 
@@ -823,7 +823,7 @@ async function fetchQueue(){
     ${rows}`;
 
   }catch(err){
-    console.log("Queue fetch error:", err);
+    console.error("Queue fetch error:", err);
   }finally{
     isFetching = false;
   }
@@ -847,7 +847,7 @@ async function fetchLiveStats(){
     document.getElementById("pointsToday").innerText    = data.pointsToday;
 
   }catch(err){
-    console.log("Stats fetch error:", err);
+    console.error("Stats fetch error:", err);
   }
 }
 
@@ -1221,7 +1221,7 @@ async function loadOnboardingChecklist(){
     document.getElementById('onboardingChecklist').style.display = 'block';
 
   }catch(err){
-    console.log('Onboarding check error:', err);
+    console.error('Onboarding check error:', err);
   }
 }
 
