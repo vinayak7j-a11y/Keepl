@@ -163,7 +163,8 @@ app.use((req, res) => {
 });
 Sentry.setupExpressErrorHandler(app);
 app.use((err, req, res, next) => {
-  console.error("Server error:", err);
+  console.error("Server error:", err); 
+}
 /* =========================
    ERROR HANDLER
 ========================= */
@@ -199,4 +200,4 @@ async function startServer() {
   }
 }
 
-startServer();
+startServer();  
