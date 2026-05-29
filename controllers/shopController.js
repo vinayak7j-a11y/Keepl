@@ -295,3 +295,32 @@ exports.getShopQR = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+exports.extendTrial = async (req, res) => {
+  try {
+    const { phone, days, adminSecret } = req.body;
+
+    if (adminSecret !== process.env.ADMIN_SECRET) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const shop = await Shop.findOne({ phone });
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    const newDate = new Date(
+      Math.max(Date.now(), shop.trialEndsAt?.getTime() || Date.now()) 
+      + 1000 * 60 * 60 * 24 * (days || 30)
+    );
+
+    await Shop.updateOne({ phone }, { trialEndsAt: newDate });
+
+    res.json({ 
+      message: `Trial extended`,
+      trialEndsAt: newDate,
+      shop: shop.name
+    });
+
+  } catch (err) {
+    console.error("Extend trial error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
