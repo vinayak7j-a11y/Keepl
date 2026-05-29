@@ -49,6 +49,9 @@ router.patch("/:shopId/reward-name", authMiddleware, shopController.updateReward
 router.get("/:shopId/qr", authMiddleware, shopController.getShopQR);
 
 // ✅ Admin password reset (manual, for trial period)
-router.post("/reset-password", shopController.resetPassword);
+router.post("/reset-password", shopController.resetPassword); 
+
+// ✅ Extend trial period
+router.post("/extend-trial", shopController.extendTrial);
 
 module.exports = router;
