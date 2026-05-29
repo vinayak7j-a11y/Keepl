@@ -413,21 +413,44 @@ router.get("/:shopId", async (req, res) => {
     const { shopId } = req.params;
 
     console.log("🔍 Scan page requested for shopId:", shopId);
+const shop = await Shop.findOne({ shopId }).lean();
 
-    const shop = await Shop.findOne({ shopId }).lean();
-    const rewardName = shop.rewardName || "Free reward";
+if (!shop) {
+  return res.status(404).send("Shop not found");
+}
 
-    if (!shop) {
-      return res.status(404).send("Shop not found");
-    }
+const rewardName = shop.rewardName || "Free reward"; 
 
+    // Trial expiry gate
+if (shop.trialEndsAt && shop.trialEndsAt < new Date()) {
+  return res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Shop Paused</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; background: #F7F6F2; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .card { background: white; border-radius: 24px; padding: 40px 28px; max-width: 360px; width: 100%; text-align: center; box-shadow: 0 8px 40px rgba(26,26,46,0.10); }
+    .icon { font-size: 48px; margin-bottom: 16px; }
+    h2 { font-size: 20px; font-weight: 500; color: #1A1A2E; margin-bottom: 8px; }
+    p { font-size: 14px; color: #9090A8; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🔒</div>
+    <h2>Loyalty program paused</h2>
+    <p>This shop's loyalty program is temporarily unavailable. Please check back later.</p>
+  </div>
+</body>
+</html>`);
+}
     const shopName = String(shop.name)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-    const rewardThreshold = shop.rewardThreshold || 100;
-
+    const rewardThreshold = shop.rewardThreshold || 100; 
     res.send(`<!DOCTYPE html>
 <html>
 <head>
