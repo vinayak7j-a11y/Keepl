@@ -221,18 +221,6 @@ input[type="number"]:focus {
     </button>
   </div>
 </nav>
-````ejs
-<%const isTrialExpired = trialDaysLeft <= 0;
-  ...
-%>
-```ejs id="vq7s2o"
-```
-
-And also remove the closing triple backtick ` ``` ` that appears after the banner `</div>`.
-
----
-
-**Replace the entire broken section with this clean version.** Find everything between `</nav>` and `<!-- ── Onboarding Checklist ── -->` and replace with:
 
 <!-- ── Page content ── -->
 <div class="k-page">
@@ -268,8 +256,7 @@ And also remove the closing triple backtick ` ``` ` that appears after the banne
   <p style="font-size:14px;color:var(--k-ink-tertiary);margin:0;">
     Welcome back — here's your dashboard
   </p>
-</div>```html
-
+</div>
 
 <!-- ── Onboarding Checklist ── -->
 <div id="onboardingChecklist" style="display:none;margin-bottom:24px;">
@@ -316,7 +303,7 @@ And also remove the closing triple backtick ` ``` ` that appears after the banne
 
     </div>
   </div>
-</div> 
+</div>
 
   <!-- ── Stat cards ── -->
   <div class="k-stat-grid">
@@ -361,7 +348,7 @@ And also remove the closing triple backtick ` ``` ` that appears after the banne
     <div id="customerSearchResult" style="margin-top:12px;"></div>
   </div>
 
-    <!-- ── Queue card ── -->
+  <!-- ── Queue card ── -->
   <div class="k-card">
     <div class="k-card-title">
       <i class="ti ti-list-check" style="color:var(--k-saffron);"></i>
@@ -427,6 +414,30 @@ And also remove the closing triple backtick ` ``` ` that appears after the banne
         Minimum 10 points. Customers see this on their scan page.
       </p>
       <div id="thresholdMsg" style="margin-top:8px;"></div>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:0.5px solid var(--k-border);">
+        <p style="font-size:14px;color:var(--k-ink-secondary);margin-bottom:12px;">
+          What do customers get when they hit <strong><%= shop.rewardThreshold || 100 %></strong> points?
+        </p>
+        <div class="settings-row">
+          <label for="rewardNameInput">Reward name:</label>
+          <input
+            type="text"
+            id="rewardNameInput"
+            placeholder="e.g. Free chai, ₹50 off"
+            maxlength="80"
+            value="<%= shop.rewardName || 'Free reward' %>"
+            style="flex:1;min-width:180px;padding:8px 12px;border-radius:var(--k-r-sm);border:1.5px solid var(--k-border);font-size:14px;font-family:inherit;color:var(--k-ink);outline:none;"
+            onfocus="this.style.borderColor='var(--k-saffron)'"
+            onblur="this.style.borderColor='var(--k-border)'"
+          />
+          <button class="k-btn k-btn-primary k-btn-sm" onclick="saveRewardName()">
+            <i class="ti ti-device-floppy"></i> Save
+          </button>
+        </div>
+        <p class="settings-hint">Customers see this on their thank-you page as their reward goal.</p>
+        <div id="rewardNameMsg" style="margin-top:8px;"></div>
+      </div>
     </div>
   </div>
 
@@ -441,6 +452,7 @@ const BASE_URL = "https://keepl.onrender.com";
 const token = localStorage.getItem("token");
 const shopIdLocal = localStorage.getItem("shopId");
 const SHOP_NAME = "<%= shop.name %>";
+const REWARD_THRESHOLD = <%= shop.rewardThreshold || 100 %>;
 
 if(!token || !shopIdLocal){
   window.location.href="/";
@@ -533,14 +545,14 @@ function showToast(message){
 function sendWhatsApp(phone, customerName, pointsEarned, totalPoints, amountSpent){
 
   const cleanPhone = String(phone).replace(/\D/g,"").replace(/^(91|0)/,"");
-  const REWARD_THRESHOLD = shop.rewardThreshold || 100;
+
   const message =
     `Hi ${customerName}! 🎉\n\n` +
     `Thank you for visiting *${SHOP_NAME}*.\n\n` +
     `🧾 Amount Spent: ₹${amountSpent}\n` +
     `⭐ Points Earned: *${pointsEarned} pts*\n` +
-    `🏆 Total Points: *${totalPoints} pts*\n\n` + 
-    `${totalPoints >= REWARD_THRESHOLD ? "🎉 Congratulations! You have collected *" + totalPoints + " points*! You can now redeem your points for a free reward! Tell the shopkeeper 🎁" : "🎁 Collect *100 points* to redeem a free reward!"}\n\n` +
+    `🏆 Total Points: *${totalPoints} pts*\n\n` +
+    `${totalPoints >= REWARD_THRESHOLD ? "🎉 Congratulations! You have collected *" + totalPoints + " points*! You can now redeem your points for a free reward! Tell the shopkeeper 🎁" : "🎁 Collect *" + REWARD_THRESHOLD + " points* to redeem a free reward!"}\n\n` +
     `See you again soon 😊\n` +
     `– ${SHOP_NAME} via Keepl`;
 
@@ -693,7 +705,7 @@ async function saveRewardName(){
     const data = await res.json();
 
     if(res.ok){
-      msg.innerHTML = `<span class="success">✓ Saved! Customers will see "${data.rewardName}" as their reward goal.</span>`; 
+      msg.innerHTML = `<span class="success">✓ Saved! Customers will see "${data.rewardName}" as their reward goal.</span>`;
       document.getElementById('rewardNameDisplay').innerText = data.rewardName;
     } else {
       msg.innerHTML = `<span class="error">${data.message || "Failed to save"}</span>`;
@@ -794,7 +806,7 @@ async function fetchQueue(){
       const initials = customer.name
         ? customer.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)
         : "?";
-      const avatarColor = customer.points >= 100
+      const avatarColor = customer.points >= REWARD_THRESHOLD
         ? "background:var(--k-teal-lt);color:var(--k-teal-dk);"
         : "background:var(--k-saffron-lt);color:var(--k-saffron-dk);";
 
@@ -814,7 +826,7 @@ async function fetchQueue(){
         <td style="color:var(--k-ink-secondary);">${customer.phone}</td>
         <td style="color:var(--k-ink-secondary);">₹${customer.totalSpent}</td>
         <td>
-          <span style="font-size:18px;font-weight:500;color:${customer.points >= 100 ? 'var(--k-teal)' : 'var(--k-saffron)'};">
+          <span style="font-size:18px;font-weight:500;color:${customer.points >= REWARD_THRESHOLD ? 'var(--k-teal)' : 'var(--k-saffron)'};">
             ${customer.points}
           </span>
           <span style="font-size:12px;color:var(--k-ink-tertiary);"> pts at your shop</span>
@@ -840,14 +852,14 @@ async function fetchQueue(){
           <div id="msg-${customer.phone}" style="margin-top:4px;"></div>
         </td>
         <td>
-          ${customer.points >= 100
+          ${customer.points >= REWARD_THRESHOLD
             ? `<button
                 class="k-btn k-btn-teal k-btn-sm"
                 onclick="redeemPoints('${customer.phone}','${customer.queueId}',this.dataset.name,${customer.points},this)" data-name="${customer.name}">
                 <i class="ti ti-gift"></i> Redeem
                </button>
                <div id="redeem-msg-${customer.phone}" style="margin-top:4px;"></div>`
-            : `<span style="font-size:12px;color:var(--k-ink-tertiary);">${customer.points}/100 pts</span>`
+            : `<span style="font-size:12px;color:var(--k-ink-tertiary);">${customer.points}/${REWARD_THRESHOLD} pts</span>`
           }
         </td>
       </tr>`;
@@ -899,8 +911,8 @@ async function givePoints(phone, queueId, customerName, btn){
 
   const amountInput = document.getElementById(`amount-${phone}`);
   const amount = amountInput?.value;
-  const snapshotAmount = amount; // snapshot immediately before any async gap
-  activeInputPhone = phone;      // lock queue refresh while processing
+  const snapshotAmount = amount;
+  activeInputPhone = phone;
   const msg = document.getElementById(`msg-${phone}`);
 
   if(!snapshotAmount || snapshotAmount <= 0){
@@ -958,7 +970,7 @@ async function givePoints(phone, queueId, customerName, btn){
 
       amountInput.value = "";
       delete inputCache[phone];
-      activeInputPhone = null; // release lock
+      activeInputPhone = null;
 
       setTimeout(fetchQueue, 1000);
 
@@ -969,7 +981,7 @@ async function givePoints(phone, queueId, customerName, btn){
   }catch(err){
     console.error("Give points error:", err);
     msg.innerHTML = "<span class='error'>Server error</span>";
-    activeInputPhone = null; // release lock on error
+    activeInputPhone = null;
   }
 
   btn.disabled = false;
@@ -985,7 +997,7 @@ async function redeemPoints(phone, queueId, customerName, currentPoints, btn){
   if(btn.disabled) return;
 
   const confirmed = confirm(
-    `Redeem 100 points for ${customerName}?\nThey have ${currentPoints} pts. Remaining after: ${currentPoints - 100} pts.`
+    `Redeem ${REWARD_THRESHOLD} points for ${customerName}?\nThey have ${currentPoints} pts. Remaining after: ${currentPoints - REWARD_THRESHOLD} pts.`
   );
   if(!confirmed) return;
 
@@ -1003,7 +1015,7 @@ async function redeemPoints(phone, queueId, customerName, currentPoints, btn){
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ phone, shopId, points: 100, queueId })
+      body: JSON.stringify({ phone, shopId, points: REWARD_THRESHOLD, queueId })
     });
 
     const data = await res.json();
@@ -1011,11 +1023,11 @@ async function redeemPoints(phone, queueId, customerName, currentPoints, btn){
     if(res.ok){
       msg.innerHTML = `<span class="success">Redeemed ✓</span>
         <button class="k-wa-btn" style="margin-left:6px;"
-          onclick="sendWhatsAppRedeem('${phone}',${JSON.stringify(customerName)},100,${data.remainingPoints})">
+          onclick="sendWhatsAppRedeem('${phone}',${JSON.stringify(customerName)},${REWARD_THRESHOLD},${data.remainingPoints})">
           📲 WhatsApp
         </button>`;
 
-      sendWhatsAppRedeem(phone, customerName, 100, data.remainingPoints);
+      sendWhatsAppRedeem(phone, customerName, REWARD_THRESHOLD, data.remainingPoints);
 
       recentlyProcessed.add(phone);
 
@@ -1067,7 +1079,7 @@ async function loadQR(){
     console.error("QR load error:", err);
     missing.style.display = 'block';
   }
-} 
+}
 
 /* =========================
    MANUAL CUSTOMER SEARCH
@@ -1192,11 +1204,9 @@ async function givePointsManual(phone, customerName, btn){
       amountInput.value = "";
       activeInputPhone = null;
 
-      // Refresh search results
       const q = document.getElementById("customerSearchInput").value;
       searchCustomer(q);
 
-      // Show success briefly
       const row = btn.closest('div[style*="border-bottom"]');
       if(row){
         const msg = document.createElement('span');
@@ -1219,13 +1229,12 @@ async function givePointsManual(phone, customerName, btn){
   btn.innerHTML = '<i class="ti ti-bolt"></i> Give';
   activeInputPhone = null;
 }
- 
+
 /* =========================
    ONBOARDING CHECKLIST
 ========================= */
 
 async function loadOnboardingChecklist(){
-  // If dismissed before, don't show
   if(localStorage.getItem('keepl_onboarding_dismissed') === '1') return;
 
   try{
@@ -1236,13 +1245,11 @@ async function loadOnboardingChecklist(){
     if(!res.ok) return;
     const s = await res.json();
 
-    // All 3 done — hide permanently
     if(s.hasQR && s.hasFirstCustomer && s.hasFirstPoints){
       localStorage.setItem('keepl_onboarding_dismissed', '1');
       return;
     }
 
-    // Mark completed steps
     function markDone(stepId){
       const icon = document.getElementById(stepId + '-icon');
       const row  = document.getElementById(stepId);
@@ -1268,7 +1275,7 @@ function dismissChecklist(){
   document.getElementById('onboardingChecklist').style.display = 'none';
 }
 
-loadOnboardingChecklist(); 
+loadOnboardingChecklist();
 
 
 /* =========================
@@ -1327,7 +1334,6 @@ setInterval(()=>{
 
 let deferredPrompt;
 
-// Show iOS hint if not installable and on iPhone
 if(/iPhone|iPad|iPod/.test(navigator.userAgent) && !window.navigator.standalone){
   const iosHint = document.createElement('div');
   iosHint.style.cssText = 'font-size:12px;color:var(--k-ink-tertiary);text-align:center;padding:8px;';
