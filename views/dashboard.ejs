@@ -234,33 +234,30 @@ And also remove the closing triple backtick ` ``` ` that appears after the banne
 
 **Replace the entire broken section with this clean version.** Find everything between `</nav>` and `<!-- ── Onboarding Checklist ── -->` and replace with:
 
-```html
 <!-- ── Page content ── -->
 <div class="k-page">
 
 <% if (trialDaysLeft !== null && trialDaysLeft <= 7) { %>
-  <% const isTrialExpired = trialDaysLeft <= 0; %>
-  <div style="
-    background:<%= isTrialExpired ? '#FCEBEB' : '#FEF3E2' %>;
-    border:0.5px solid <%= isTrialExpired ? '#F09595' : '#F5C07A' %>;
-    border-radius:var(--k-r-md);
-    padding:14px 18px;
-    margin-bottom:20px;
-    display:flex;
-    align-items:center;
-    gap:12px;
-  ">
-    <span style="font-size:20px;"><%= isTrialExpired ? '🔒' : '⏳' %></span>
-    <div>
-      <div style="font-size:14px;font-weight:500;color:<%= isTrialExpired ? '#791F1F' : '#7A3F00' %>;">
-        <%= isTrialExpired ? 'Your free trial has ended' : `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left in your free trial` %>
-      </div>
-      <div style="font-size:13px;color:<%= isTrialExpired ? '#A03030' : '#9A5000' %>;margin-top:2px;">
-        <%= isTrialExpired ? 'Contact us on WhatsApp to continue using Keepl.' : 'Enjoying Keepl? Contact us to continue after your trial.' %>
-        <a href="https://wa.me/919285273124" target="_blank" style="color:var(--k-saffron);font-weight:500;text-decoration:none;">WhatsApp us →</a>
-      </div>
+<%
+  var isTrialExpired = trialDaysLeft <= 0;
+  var bannerBg = isTrialExpired ? '#FCEBEB' : '#FEF3E2';
+  var bannerBorder = isTrialExpired ? '#F09595' : '#F5C07A';
+  var headingColor = isTrialExpired ? '#791F1F' : '#7A3F00';
+  var subtextColor = isTrialExpired ? '#A03030' : '#9A5000';
+  var bannerIcon = isTrialExpired ? '🔒' : '⏳';
+  var bannerTitle = isTrialExpired ? 'Your free trial has ended' : (trialDaysLeft + ' day' + (trialDaysLeft === 1 ? '' : 's') + ' left in your free trial');
+  var bannerText = isTrialExpired ? 'Contact us on WhatsApp to continue using Keepl.' : 'Enjoying Keepl? Contact us to continue after your trial.';
+%>
+<div style="background:<%- bannerBg %>;border:0.5px solid <%- bannerBorder %>;border-radius:var(--k-r-md);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+  <span style="font-size:20px;"><%- bannerIcon %></span>
+  <div>
+    <div style="font-size:14px;font-weight:500;color:<%- headingColor %>;"><%- bannerTitle %></div>
+    <div style="font-size:13px;color:<%- subtextColor %>;margin-top:2px;">
+      <%- bannerText %>
+      <a href="https://wa.me/919285273124" target="_blank" style="color:var(--k-saffron);font-weight:500;text-decoration:none;">WhatsApp us →</a>
     </div>
   </div>
+</div>
 <% } %>
 
 <!-- Shop name heading -->
@@ -271,11 +268,8 @@ And also remove the closing triple backtick ` ``` ` that appears after the banne
   <p style="font-size:14px;color:var(--k-ink-tertiary);margin:0;">
     Welcome back — here's your dashboard
   </p>
-</div>
-```
+</div>```html
 
-That's the only change needed in `dashboard.ejs`. The VS Code CSS errors will remain (they're harmless linter false positives on EJS syntax) but the runtime errors will be gone.
- 
 
 <!-- ── Onboarding Checklist ── -->
 <div id="onboardingChecklist" style="display:none;margin-bottom:24px;">
