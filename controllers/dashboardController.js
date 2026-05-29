@@ -100,13 +100,18 @@ const getDashboard = async (req, res) => {
       (sum, t) => sum + (t.points || 0),
       0
     );
+const trialDaysLeft = shop.trialEndsAt
+      ? Math.ceil((new Date(shop.trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24))
+      : null;
 
     res.render("dashboard", {
       shop,
       customers,
       customersToday,
-      pointsToday
+      pointsToday,
+      trialDaysLeft
     });
+    
 
   } catch (error) {
     console.error("Dashboard error:", error);
