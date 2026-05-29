@@ -420,7 +420,9 @@ if (!shop) {
 }
 
 const rewardName = shop.rewardName || "Free reward"; 
-
+if (shop.trialEndsAt && shop.trialEndsAt < new Date()) {
+  return res.status(403).send("This shop's loyalty program is currently paused.");
+}
     // Trial expiry gate
 if (shop.trialEndsAt && shop.trialEndsAt < new Date()) {
   return res.send(`<!DOCTYPE html>
