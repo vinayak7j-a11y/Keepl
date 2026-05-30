@@ -28,6 +28,7 @@ const queueRoutes = require("./routes/queueRoutes");
 const posterRoutes = require("./routes/posterRoutes");
 const shopPageRoutes = require("./routes/shopPageRoutes");
 const analyticsRoutes = require("./routes/analyticsRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 /* =========================
    APP SETTINGS
@@ -116,6 +117,7 @@ app.get("/customers/:shopId", dashboardController.getCustomersPage);
    SCAN ROUTES (MUST BE LAST)
 ========================= */
 
+app.use("/admin", adminRoutes);
 app.use("/scan", scanRoutes);
 
 /* =========================
