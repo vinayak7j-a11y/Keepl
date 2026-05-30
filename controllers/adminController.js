@@ -290,26 +290,19 @@ const adminLogin = async (req, res) => {
       return res.status(400).json({ message: "Phone and password required" });
     }
 
-    if (phone !== process.env.ADMIN_PHONE) {
-      return res.status(403).json({ message: "Not an admin account" });
+    if (phone !== process.env.ADMIN_PHONE || password !== process.env.ADMIN_PASSWORD) {
+      return res.status(403).json({ message: "Invalid admin credentials" });
     }
 
-    const bcrypt = require("bcrypt");
     const jwt = require("jsonwebtoken");
 
-    const shop = await Shop.findOne({ phone }).select("+password");
-    if (!shop) return res.status(404).json({ message: "Account not found" });
-
-    const valid = await bcrypt.compare(password, shop.password);
-    if (!valid) return res.status(401).json({ message: "Wrong password" });
-
     const token = jwt.sign(
-      { shopId: shop.shopId, phone: shop.phone },
+      { phone: process.env.ADMIN_PHONE },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    res.json({ token, phone: shop.phone });
+    res.json({ token, phone });
 
   } catch (err) {
     console.error("Admin login error:", err);
