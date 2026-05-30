@@ -661,6 +661,7 @@ if (shop.trialEndsAt && shop.trialEndsAt < new Date()) {
   <p class="subtitle">Enter your details to earn reward points</p>
 
   <form method="POST" action="/scan/capture" onsubmit="handleSubmit(event)">
+    <input type="hidden" name="shopId" value="${shopId}">
 
     <div class="form-group">
       <label class="form-label">Your name</label>
