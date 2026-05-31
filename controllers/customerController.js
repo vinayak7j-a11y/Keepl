@@ -11,6 +11,8 @@ const captureCustomer = async (req, res) => {
     phone = phone?.trim();
     if (!name || !phone || !shopId) return res.status(400).json({ message: "Name, phone and shopId are required" });
     if (!/^[0-9]{10}$/.test(phone)) return res.status(400).json({ message: "Phone number must be exactly 10 digits" });
+
+    if (!req.body.consent) return res.status(400).json({ message: "Consent is required" });
     const shop = await Shop.findOne({ shopId });
     if (!shop) return res.status(404).json({ message: "Shop not found" });
     const user = await User.findOneAndUpdate({ phone }, { $set: { name, phone }, $inc: { totalVisits: 1 }, $currentDate: { lastVisit: true } }, { new: true, upsert: true });
