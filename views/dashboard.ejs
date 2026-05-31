@@ -734,6 +734,13 @@ function toggleRewardSettings(){
    FETCH QUEUE
 ========================= */
 
+async function forceRefreshQueue(){
+  activeInputPhone = null;
+  isFetching = false;
+  lastTransactionTime = 0;
+  await fetchQueue();
+}
+
 async function fetchQueue(){
 
   if(isFetching) return;
@@ -1197,9 +1204,7 @@ async function givePointsManual(phone, customerName, btn){
 
       const q = document.getElementById("customerSearchInput").value;
       searchCustomer(q);
-      lastTransactionTime = 0;
-      isFetching = false;
-      setTimeout(() => { activeInputPhone = null; fetchQueue(); }, 500);
+      setTimeout(forceRefreshQueue, 800);
 
       const row = btn.closest('div[style*="border-bottom"]');
       if(row){
