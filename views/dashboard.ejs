@@ -847,7 +847,7 @@ async function fetchQueue(){
             >
             <button
               class="k-btn k-btn-primary k-btn-sm"
-              onclick="givePoints('${customer.phone}','${customer.queueId}',this.dataset.name,this)" data-name="${customer.name}">
+              onclick="givePoints('${customer.phone}','${customer.queueId}',this.dataset.name,this)" data-name="${customer.name.replace(/"/g, '&quot;').replace(/'/g, '&#39;')}">
               <i class="ti ti-bolt"></i> Give
             </button>
           </div>
@@ -857,7 +857,7 @@ async function fetchQueue(){
           ${customer.points >= REWARD_THRESHOLD
             ? `<button
                 class="k-btn k-btn-teal k-btn-sm"
-                onclick="redeemPoints('${customer.phone}','${customer.queueId}',this.dataset.name,${customer.points},this)" data-name="${customer.name}">
+                onclick="redeemPoints('${customer.phone}','${customer.queueId}',this.dataset.name,${customer.points},this)" data-name="${customer.name.replace(/"/g, '&quot;').replace(/'/g, '&#39;')}">
                 <i class="ti ti-gift"></i> Redeem
                </button>
                <div id="redeem-msg-${customer.phone}" style="margin-top:4px;"></div>`
