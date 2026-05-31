@@ -986,6 +986,7 @@ async function givePoints(phone, queueId, customerName, btn){
     console.error("Give points error:", err);
     msg.innerHTML = "<span class='error'>Server error</span>";
     activeInputPhone = null;
+    lastTransactionTime = 0;
   }
 
   btn.disabled = false;
