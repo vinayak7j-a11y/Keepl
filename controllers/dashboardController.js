@@ -116,6 +116,7 @@ if (!shop.isActive) {
 
     const todayTransactions = await Transaction.find({
       shopId: shop._id,
+      type: "earn",
       createdAt: { $gte: today }
     }).lean();
 
