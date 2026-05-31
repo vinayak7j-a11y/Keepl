@@ -452,7 +452,7 @@ const BASE_URL = "https://keepl.onrender.com";
 const token = localStorage.getItem("token");
 const shopIdLocal = localStorage.getItem("shopId");
 const SHOP_NAME = "<%= shop.name %>";
-const REWARD_THRESHOLD = <%= shop.rewardThreshold || 100 %>;
+let REWARD_THRESHOLD = <%= shop.rewardThreshold || 100 %>;
 
 if(!token || !shopIdLocal){
   window.location.href="/";
@@ -664,6 +664,7 @@ async function saveRewardThreshold(){
     if(res.ok){
       msg.innerHTML = `<span class="success">✓ Saved!</span>`;
       document.getElementById('thresholdDisplay').innerText = data.rewardThreshold;
+      REWARD_THRESHOLD = data.rewardThreshold;
       setTimeout(() => { document.getElementById('rewardSettingsExpanded').style.display = 'none'; }, 1000);
     } else {
       msg.innerHTML = `<span class="error">${data.message || "Failed to save"}</span>`;
