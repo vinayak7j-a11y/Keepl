@@ -260,12 +260,5 @@ module.exports = {
   getDashboard,
   getCustomersPage,
   getLiveStats,
-  getOnboardingStatus,
-  getOverviewStats,
-  getShopStats,
-  getDailyScans,
-  getActivityFeed,
-  getAttentionItems,
-  adminLogin,
-  toggleShopBlock
-}; 
+  getOnboardingStatus
+};
