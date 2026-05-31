@@ -324,6 +324,7 @@ td {
 const BASE_URL = "https://keepl.onrender.com";
 const token = localStorage.getItem("token");
 const SHOP_ID = "<%= shop.shopId %>";
+const REWARD_THRESHOLD = <%= shop.rewardThreshold || 100 %>;
 
 if(!token){
   window.location.href = "/";
@@ -387,7 +388,7 @@ async function loadCustomers(){
 /* ── Stats summary ── */
 function updateStats(data){
   const total       = data.length;
-  const redeemable  = data.filter(c => c.points >= 100).length;
+  const redeemable  = data.filter(c => c.points >= REWARD_THRESHOLD).length;
   const totalPoints = data.reduce((s,c) => s + (c.points || 0), 0);
   const totalRedeem = data.reduce((s,c) => s + (c.redeemCount || 0), 0);
 
@@ -410,11 +411,11 @@ function renderTable(data){
 
     /* Points badge */
     let badgeClass = "points-low";
-    if(c.points >= 100) badgeClass = "points-high";
-    else if(c.points >= 50) badgeClass = "points-mid";
+    if(c.points >= REWARD_THRESHOLD) badgeClass = "points-high";
+    else if(c.points >= REWARD_THRESHOLD * 0.5) badgeClass = "points-mid";
 
     /* Progress bar */
-    const pct = Math.min(100, Math.round((c.points / 100) * 100));
+    const pct = Math.min(100, Math.round((c.points / REWARD_THRESHOLD) * 100));
     const barClass = pct >= 100 ? "full" : "";
 
     /* Redeem history */
