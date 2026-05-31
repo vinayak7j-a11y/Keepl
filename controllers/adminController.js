@@ -64,7 +64,7 @@ const getOverviewStats = async (req, res) => {
       pointsToday: pointsToday[0]?.total || 0,
       redeemsToday,
       shopsThisWeek,
-      customersToday: customersToday.length,
+      customersToday: new Set(customersToday.map(id => id.toString())).size,
       repeatRate,
     });
 

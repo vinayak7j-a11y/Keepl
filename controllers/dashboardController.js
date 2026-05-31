@@ -120,7 +120,7 @@ if (!shop.isActive) {
       createdAt: { $gte: today }
     }).lean();
 
-    const customersToday = todayTransactions.length;
+    const customersToday = new Set(todayTransactions.map(t => t.userId.toString())).size;
 
     const pointsToday = todayTransactions.reduce(
       (sum, t) => sum + (t.points || 0),
@@ -199,7 +199,7 @@ const getLiveStats = async (req, res) => {
       createdAt: { $gte: today }
     }).lean();
 
-    const customersToday = todayTransactions.length;
+    const customersToday = new Set(todayTransactions.map(t => t.userId.toString())).size;
     const pointsToday = todayTransactions.reduce(
       (sum, t) => sum + (t.points || 0), 0
     );
