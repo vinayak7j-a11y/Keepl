@@ -317,10 +317,20 @@
     btn.classList.add('active');
 
     const token = localStorage.getItem("token");
-    const res = await fetch(`/api/analytics/${shopId}?range=${range}`, {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    const d = await res.json();
+    if (!token) { window.location.href = "/"; return; }
+
+    let d;
+    try {
+      const res = await fetch(`/api/analytics/${shopId}?range=${range}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.status === 401) { window.location.href = "/"; return; }
+      if (!res.ok) throw new Error("Failed");
+      d = await res.json();
+    } catch (err) {
+      console.error("Analytics load error:", err);
+      return;
+    }
 
     // Stat cards
     document.getElementById('s-rev').textContent = '₹' + d.stats.totalRevenue.toLocaleString('en-IN');
