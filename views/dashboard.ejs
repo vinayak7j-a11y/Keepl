@@ -1197,10 +1197,9 @@ async function givePointsManual(phone, customerName, btn){
 
       const q = document.getElementById("customerSearchInput").value;
       searchCustomer(q);
-      activeInputPhone = null;
       lastTransactionTime = 0;
       isFetching = false;
-      fetchQueue();
+      setTimeout(() => { activeInputPhone = null; fetchQueue(); }, 500);
 
       const row = btn.closest('div[style*="border-bottom"]');
       if(row){
