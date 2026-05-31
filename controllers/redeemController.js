@@ -14,9 +14,9 @@ exports.redeemPoints = async (req, res) => {
 
     points = Number(points);
 
-    if (!phone || !shopId || !points || points <= 0 || points < 100) {
+    if (!phone || !shopId || !points || points <= 0) {
       return res.status(400).json({
-        message: "Valid phone, shopId and minimum 100 points required"
+        message: "Valid phone, shopId and points required"
       });
     }
 
