@@ -544,7 +544,7 @@ function showToast(message){
 
 function sendWhatsApp(phone, customerName, pointsEarned, totalPoints, amountSpent){
 
-  const cleanPhone = String(phone).replace(/\D/g,"").replace(/^(91|0)/,"");
+  const cleanPhone = String(phone).replace(/\D/g,"").slice(-10);
 
   const message =
     `Hi ${customerName}! 🎉\n\n` +
@@ -616,7 +616,7 @@ function showWaFallback(phone, message){
 ========================= */
 
 function sendWhatsAppRedeem(phone, customerName, pointsRedeemed, remainingPoints){
-  const cleanPhone = String(phone).replace(/\D/g, "").replace(/^(91|0)/, "");
+  const cleanPhone = String(phone).replace(/\D/g, "").slice(-10);
 
   const message =
     `Hi ${customerName}! 🎁\n\n` +
