@@ -463,6 +463,7 @@ if(!token || !shopIdLocal){
 ========================= */
 
 let isFetching = false;
+let lastTransactionTime = 0;
 let activeInputPhone = null;
 let inputCache = {};
 
@@ -736,6 +737,7 @@ async function fetchQueue(){
 
   if(isFetching) return;
   if(activeInputPhone) return;
+  if(Date.now() - lastTransactionTime < 30000) return;
 
   isFetching = true;
 
@@ -967,6 +969,7 @@ async function givePoints(phone, queueId, customerName, btn){
       sendWhatsApp(phone, customerName, earned, total, spent);
 
       recentlyProcessed.add(phone);
+      lastTransactionTime = Date.now();
 
       amountInput.value = "";
       delete inputCache[phone];
@@ -1030,6 +1033,7 @@ async function redeemPoints(phone, queueId, customerName, currentPoints, btn){
       sendWhatsAppRedeem(phone, customerName, REWARD_THRESHOLD, data.remainingPoints);
 
       recentlyProcessed.add(phone);
+      lastTransactionTime = Date.now();
 
       setTimeout(fetchQueue, 1000);
 
