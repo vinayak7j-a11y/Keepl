@@ -324,7 +324,7 @@ td {
 const BASE_URL = "https://keepl.onrender.com";
 const token = localStorage.getItem("token");
 const SHOP_ID = "<%= shop.shopId %>";
-const REWARD_THRESHOLD = <%= shop.rewardThreshold || 100 %>;
+const REWARD_THRESHOLD = parseInt("<%= shop.rewardThreshold || 100 %>") || 100;
 
 if(!token){
   window.location.href = "/";
