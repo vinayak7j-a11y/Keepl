@@ -1,6 +1,7 @@
 const Shop = require("../models/Shop");
 const Transaction = require("../models/Transaction");
 const Wallet = require("../models/Wallet");
+const User = require("../models/User");
 
 exports.getAnalytics = async (req, res) => {
   try {
@@ -61,8 +62,6 @@ exports.getAnalytics = async (req, res) => {
     // Repeat customers (wallets with totalEarned from multiple transactions)
     const wallets = await Wallet.find({ shopId: shop._id }).lean();
     const totalCustomers = wallets.length;
-    const repeatCustomers = wallets.filter(w => w.totalEarned > 0).length;
-
     // Rough repeat % — users with >1 transaction in range
     const repeatInRange = await Transaction.aggregate([
       { $match: { shopId: shop._id, type: "earn", createdAt: { $gte: since } } },
