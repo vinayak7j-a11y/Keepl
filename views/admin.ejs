@@ -44,6 +44,9 @@ tr:last-child td { border-bottom: none; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 #loginScreen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .login-card { background: var(--k-surface); border: 0.5px solid var(--k-border); border-radius: 20px; padding: 32px 28px; width: 100%; max-width: 360px; }
+.block-btn { font-size: 11px; padding: 4px 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; }
+.block-btn-active { background: #FCEBEB; color: #791F1F; }
+.block-btn-blocked { background: #EAF3DE; color: #2E5E0E; }
 @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } .admin-stat-grid { grid-template-columns: 1fr 1fr; } th, td { padding: 8px 8px; } }
 </style>
 </head>
@@ -132,11 +135,11 @@ tr:last-child td { border-bottom: none; }
         <thead>
           <tr>
             <th>Shop</th><th>Owner</th><th>Scans today</th><th>Pts today</th>
-            <th>Queue</th><th>Total customers</th><th>Revenue</th><th>Trial</th><th>Last active</th>
+            <th>Queue</th><th>Total customers</th><th>Revenue</th><th>Trial</th><th>Last active</th><th>Action</th>
           </tr>
         </thead>
         <tbody id="allShopsBody">
-          <tr><td colspan="9" style="text-align:center;padding:20px;color:var(--k-ink-tertiary);">Loading...</td></tr>
+          <tr><td colspan="10" style="text-align:center;padding:20px;color:var(--k-ink-tertiary);">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -223,7 +226,7 @@ async function loadShopStats() {
 
 function loadAllShopsTable(shops) {
   const tbody = document.getElementById("allShopsBody");
-  if (!shops.length) { tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--k-ink-tertiary);">No shops yet</td></tr>`; return; }
+  if (!shops.length) { tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--k-ink-tertiary);">No shops yet</td></tr>`; return; }
   tbody.innerHTML = shops.map(s => {
     const trialDays = s.trialDaysLeft;
     let trialBadge = "";
@@ -231,6 +234,8 @@ function loadAllShopsTable(shops) {
     else if (trialDays <= 0) trialBadge = `<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:#FCEBEB;color:#791F1F;border:0.5px solid #F09595;">Expired</span>`;
     else if (trialDays <= 3) trialBadge = `<span class="pill-warn">${trialDays}d left</span>`;
     else trialBadge = `<span class="pill-active">${trialDays}d left</span>`;
+    const blockLabel = s.isActive ? "🔒 Block" : "✅ Unblock";
+    const blockClass = s.isActive ? "block-btn block-btn-active" : "block-btn block-btn-blocked";
     return `<tr>
       <td><div style="font-weight:500;">${s.name}</div><div style="font-size:11px;color:var(--k-ink-tertiary);">${s.phone}</div></td>
       <td style="color:var(--k-ink-secondary);">${s.ownerName}</td>
@@ -241,6 +246,7 @@ function loadAllShopsTable(shops) {
       <td>₹${(s.totalRevenue || 0).toLocaleString("en-IN")}</td>
       <td>${trialBadge}</td>
       <td style="font-size:11px;color:var(--k-ink-tertiary);">${s.lastActive ? timeAgo(new Date(s.lastActive)) : "never"}</td>
+      <td><button class="${blockClass}" onclick="toggleBlock('${s.shopId}', ${s.isActive}, this)">${blockLabel}</button></td>
     </tr>`;
   }).join("");
 }
@@ -276,9 +282,9 @@ async function loadAttention() {
     const items = [
       { label: "Shops with 0 scans today", val: d.idleShopsToday, sub: d.idleShopNames.join(", "), danger: d.idleShopsToday > 0 },
       { label: "Expired queues (no action)", val: d.expiredQueues, sub: "", danger: d.expiredQueues > 2 },
-      { label: "Customers close to reward", val: d.closeToReward, sub: "≥80% of threshold", danger: false },
+      { label: "Customers close to reward", val: d.closeToReward, sub: ">=80% of threshold", danger: false },
       { label: "Shops inactive 3+ days", val: d.inactiveShops, sub: d.inactiveShopNames.join(", "), warn: d.inactiveShops > 0 },
-      { label: "Zero-point transactions", val: d.zeroPointTx, sub: "possible ₹0 entries", danger: d.zeroPointTx > 0 },
+      { label: "Zero-point transactions", val: d.zeroPointTx, sub: "possible 0 bill entries", danger: d.zeroPointTx > 0 },
       { label: "Trials expiring soon", val: d.expiringTrials, sub: d.expiringTrialNames.join(", "), warn: d.expiringTrials > 0 },
     ];
     document.getElementById("attentionPanel").innerHTML = items.map(item => `
@@ -295,6 +301,33 @@ function timeAgo(date) {
   if (s < 3600) return Math.floor(s / 60) + " min ago";
   if (s < 86400) return Math.floor(s / 3600) + " hr ago";
   return Math.floor(s / 86400) + " days ago";
+}
+
+async function toggleBlock(shopId, isActive, btn) {
+  const action = isActive ? "block" : "unblock";
+  if (!confirm("Are you sure you want to " + action + " this shop?")) return;
+  btn.disabled = true;
+  btn.innerText = "...";
+  try {
+    const res = await fetch(`${BASE_URL}/admin/api/shops/${shopId}/toggle-block`, {
+      method: "PATCH",
+      headers: { "Authorization": `Bearer ${adminToken}` }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      btn.className = data.isActive ? "block-btn block-btn-active" : "block-btn block-btn-blocked";
+      btn.innerText = data.isActive ? "🔒 Block" : "✅ Unblock";
+      btn.onclick = () => toggleBlock(shopId, data.isActive, btn);
+    } else {
+      alert(data.message || "Failed");
+      btn.disabled = false;
+      btn.innerText = isActive ? "🔒 Block" : "✅ Unblock";
+    }
+  } catch (err) {
+    alert("Server error");
+    btn.disabled = false;
+    btn.innerText = isActive ? "🔒 Block" : "✅ Unblock";
+  }
 }
 
 setInterval(() => { if (adminToken && !document.hidden) refreshAll(); }, 60000);

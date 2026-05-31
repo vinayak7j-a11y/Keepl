@@ -21,10 +21,35 @@ const getDashboard = async (req, res) => {
     const shop = await Shop.findOne({ shopId })
       .select("-qrCode")
       .lean();
+if (!shop) {
+  return res.status(404).send("Shop not found");
+}
 
-    if (!shop) {
-      return res.status(404).send("Shop not found");
-    }
+if (!shop.isActive) {
+  return res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Account Blocked — Keepl</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/keepl.css">
+  <style>
+    body { font-family: Arial, sans-serif; background: var(--k-bg); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .card { background: white; border-radius: 24px; padding: 40px 28px; max-width: 380px; width: 100%; text-align: center; box-shadow: 0 8px 40px rgba(26,26,46,0.10); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="font-size:48px;margin-bottom:16px;">🔒</div>
+    <h2 style="font-size:20px;font-weight:500;color:#1A1A2E;margin:0 0 8px;">Account suspended</h2>
+    <p style="font-size:14px;color:#9090A8;line-height:1.6;margin:0 0 24px;">Your Keepl account has been suspended. Please contact us to reactivate.</p>
+    <a href="https://wa.me/919285273124" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:#FF6B00;color:white;border-radius:14px;text-decoration:none;font-size:14px;font-weight:500;">
+      📲 Contact support
+    </a>
+  </div>
+</body>
+</html>`);
+}
+    
 
     /* ===== QUEUE (FIXED FILTER) ===== */
 
@@ -210,10 +235,36 @@ const getOnboardingStatus = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+const toggleShopBlock = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const shop = await Shop.findOne({ shopId });
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    shop.isActive = !shop.isActive;
+    await shop.save();
+
+    res.json({
+      success: true,
+      isActive: shop.isActive,
+      message: `Shop ${shop.isActive ? "unblocked" : "blocked"} successfully`
+    });
+  } catch (err) {
+    console.error("Toggle block error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 module.exports = {
   getDashboard,
   getCustomersPage,
   getLiveStats,
-  getOnboardingStatus
-};
+  getOnboardingStatus,
+  getOverviewStats,
+  getShopStats,
+  getDailyScans,
+  getActivityFeed,
+  getAttentionItems,
+  adminLogin,
+  toggleShopBlock
+}; 

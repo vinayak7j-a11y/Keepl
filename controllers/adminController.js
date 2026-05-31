@@ -319,3 +319,26 @@ module.exports = {
   getAttentionItems,
   adminLogin,
 };
+
+const toggleShopBlock = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const shop = await Shop.findOne({ shopId });
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    shop.isActive = !shop.isActive;
+    await shop.save();
+
+    res.json({
+      success: true,
+      isActive: shop.isActive,
+      message: `Shop ${shop.isActive ? "unblocked" : "blocked"} successfully`
+    });
+
+  } catch (err) {
+    console.error("Toggle block error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports.toggleShopBlock = toggleShopBlock;
