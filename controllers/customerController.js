@@ -260,3 +260,140 @@ module.exports = {
   getWallet,
   getShopCustomers
 };
+const searchCustomers = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const q = (req.query.q || "").trim();
+
+    if (!q) return res.json([]);
+
+    const shop = await Shop.findOne({ shopId }).lean();
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    const users = await User.find({
+      $or: [
+        { name: { $regex: q, $options: "i" } },
+        { phone: { $regex: q } }
+      ]
+    }).lean();
+
+    if (!users.length) return res.json([]);
+
+    const wallets = await Wallet.find({
+      shopId: shop._id,
+      userId: { $in: users.map(u => u._id) }
+    }).lean();
+
+    const walletMap = {};
+    wallets.forEach(w => { walletMap[w.userId.toString()] = w; });
+
+    const results = users.map(u => ({
+      name: u.name || "Unknown",
+      phone: u.phone,
+      points: walletMap[u._id.toString()]?.points || 0,
+      totalSpent: u.totalSpent || 0,
+      visits: u.totalVisits || 0
+    })).slice(0, 5);
+
+    res.json(results);
+
+  } catch (err) {
+    console.error("Search error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports.searchCustomers = searchCustomers;
+
+const searchCustomers = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const q = (req.query.q || "").trim();
+
+    if (!q) return res.json([]);
+
+    const shop = await Shop.findOne({ shopId }).lean();
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    const users = await User.find({
+      $or: [
+        { name: { $regex: q, $options: "i" } },
+        { phone: { $regex: q } }
+      ]
+    }).lean();
+
+    if (!users.length) return res.json([]);
+
+    const wallets = await Wallet.find({
+      shopId: shop._id,
+      userId: { $in: users.map(u => u._id) }
+    }).lean();
+
+    const walletMap = {};
+    wallets.forEach(w => { walletMap[w.userId.toString()] = w; });
+
+    const results = users.map(u => ({
+      name: u.name || "Unknown",
+      phone: u.phone,
+      points: walletMap[u._id.toString()]?.points || 0,
+      totalSpent: u.totalSpent || 0,
+      visits: u.totalVisits || 0
+    })).slice(0, 5);
+
+    res.json(results);
+
+  } catch (err) {
+    console.error("Search error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+const searchCustomers = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const q = (req.query.q || "").trim();
+
+    if (!q) return res.json([]);
+
+    const shop = await Shop.findOne({ shopId }).lean();
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    const users = await User.find({
+      $or: [
+        { name: { $regex: q, $options: "i" } },
+        { phone: { $regex: q } }
+      ]
+    }).lean();
+
+    if (!users.length) return res.json([]);
+
+    const wallets = await Wallet.find({
+      shopId: shop._id,
+      userId: { $in: users.map(u => u._id) }
+    }).lean();
+
+    const walletMap = {};
+    wallets.forEach(w => { walletMap[w.userId.toString()] = w; });
+
+    const results = users.map(u => ({
+      name: u.name || "Unknown",
+      phone: u.phone,
+      points: walletMap[u._id.toString()]?.points || 0,
+      totalSpent: u.totalSpent || 0,
+      visits: u.totalVisits || 0
+    })).slice(0, 5);
+
+    res.json(results);
+
+  } catch (err) {
+    console.error("Search error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+module.exports.searchCustomers = searchCustomers;
+module.exports = {
+  captureCustomer,
+  getCustomer,
+  getWallet,
+  getShopCustomers,
+  searchCustomers
+};

@@ -1085,38 +1085,32 @@ async function loadQR(){
    MANUAL CUSTOMER SEARCH
 ========================= */
 
-async function searchCustomer(query){
+async function searchCustomer(query) {
   const resultDiv = document.getElementById("customerSearchResult");
 
-  if(!query || query.length < 3){
+  if (!query || query.length < 2) {
     resultDiv.innerHTML = "";
     return;
   }
 
-  try{
+  try {
     const shopId = "<%= shop.shopId %>";
-    const res = await fetch(`${BASE_URL}/api/customers/shop/${shopId}`, {
+    const res = await fetch(`${BASE_URL}/api/customers/search/${shopId}?q=${encodeURIComponent(query)}`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
 
-    if(!res.ok) return;
+    if (!res.ok) return;
 
     const customers = await res.json();
+    const matched = customers.filter(c => !dismissedPhones.has(c.phone));
 
-    const q = query.toLowerCase();
-    const matched = customers.filter(c =>
-      !dismissedPhones.has(c.phone) &&
-      ((c.name || "").toLowerCase().includes(q) ||
-      (c.phone || "").includes(q))
-    ).slice(0, 5);
-
-    if(!matched.length){
+    if (!matched.length) {
       resultDiv.innerHTML = `<p style="font-size:13px;color:var(--k-ink-tertiary);margin-top:8px;">No customers found</p>`;
       return;
     }
 
     resultDiv.innerHTML = matched.map(c => {
-      const initials = c.name ? c.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) : "?";
+      const initials = c.name ? c.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) : "?";
       return `
       <div id="search-row-${c.phone}" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:0.5px solid var(--k-border);">
         <div style="width:40px;height:40px;border-radius:10px;background:var(--k-saffron-lt);color:var(--k-saffron-dk);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;flex-shrink:0;">
@@ -1127,23 +1121,15 @@ async function searchCustomer(query){
           <div style="font-size:12px;color:var(--k-ink-tertiary);">${c.phone} · ${c.points} pts at your shop</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <input
-            type="number"
-            id="search-amount-${c.phone}"
-            placeholder="₹ amount"
-            min="1"
+          <input type="number" id="search-amount-${c.phone}" placeholder="₹ amount" min="1"
             style="width:100px;padding:7px 10px;border:1.5px solid var(--k-border);border-radius:var(--k-r-sm);font-size:13px;font-family:inherit;outline:none;"
             onfocus="activeInputPhone='${c.phone}'"
-            onblur="setTimeout(()=>{ activeInputPhone=null; }, 300)"
-          >
-          <button
-            class="k-btn k-btn-primary k-btn-sm"
-            data-name="${c.name}"
+            onblur="setTimeout(()=>{ activeInputPhone=null; }, 300)">
+          <button class="k-btn k-btn-primary k-btn-sm" data-name="${c.name}"
             onclick="givePointsManual('${c.phone}', this.dataset.name, this)">
             <i class="ti ti-bolt"></i> Give
           </button>
-          <button
-            class="k-btn k-btn-sm"
+          <button class="k-btn k-btn-sm"
             style="background:var(--k-bg);color:var(--k-ink-tertiary);border:0.5px solid var(--k-border);"
             onclick="dismissedPhones.add('${c.phone}'); document.getElementById('search-row-${c.phone}').remove()">
             <i class="ti ti-x"></i>
@@ -1152,11 +1138,10 @@ async function searchCustomer(query){
       </div>`;
     }).join("");
 
-  }catch(err){
+  } catch (err) {
     console.error("Search error:", err);
   }
 }
-
 /* =========================
    GIVE POINTS MANUAL (no queue)
 ========================= */

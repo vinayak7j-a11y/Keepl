@@ -50,7 +50,7 @@ router.get("/wallet/:phone/:shopId", customerController.getWallet);
  * @desc    Get all customers for a shop (shopkeeper, needs auth)
  */
 router.get("/shop/:shopId", authMiddleware, customerController.getShopCustomers);
-
+router.get("/search/:shopId", authMiddleware, customerController.searchCustomers);
 /* =========================
    EXPORT
 ========================= */
