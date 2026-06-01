@@ -807,6 +807,7 @@ async function fetchQueue(){
     }
 
     waiting.innerText = data.length;
+    document.title = data.length > 0 ? `(${data.length}) Keepl — ${SHOP_NAME}` : `Keepl — ${SHOP_NAME}`;
 
     let rows = "";
 

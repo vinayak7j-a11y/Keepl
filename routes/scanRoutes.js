@@ -795,7 +795,7 @@ router.post("/capture", async (req, res) => {
           phone,
           shopId: shop._id,
           status: "waiting",
-          expiresAt: new Date(Date.now() + 1000 * 60 * 10)
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 8)
         }
       },
       { new: true, upsert: true }
