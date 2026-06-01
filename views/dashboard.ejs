@@ -126,6 +126,46 @@ input[type="number"]:focus {
   font-size: 14px;
 }
 
+
+/* ── Support card ── */
+.support-item {
+  border-radius: var(--k-r-sm);
+  border: 0.5px solid var(--k-border);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.support-q {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--k-ink);
+  background: var(--k-bg);
+}
+
+.support-icon {
+  font-size: 14px;
+  color: var(--k-saffron);
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.support-a {
+  display: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--k-ink-secondary);
+  line-height: 1.6;
+  background: var(--k-surface);
+  border-top: 0.5px solid var(--k-border);
+}
+
+.support-item.open .support-a { display: block; }
+.support-item.open .support-icon { transform: rotate(45deg); }
+
 /* ── Install button ── */
 #installBtn {
   display: none;
@@ -437,6 +477,72 @@ input[type="number"]:focus {
         </div>
         <p class="settings-hint">Customers see this on their thank-you page as their reward goal.</p>
         <div id="rewardNameMsg" style="margin-top:8px;"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── Help & Support ── -->
+  <div class="k-card" style="margin-top:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <i class="ti ti-headset" style="color:var(--k-saffron);font-size:18px;"></i>
+        <div>
+          <div style="font-size:14px;font-weight:500;color:var(--k-ink);">Help & Support</div>
+          <div style="font-size:13px;color:var(--k-ink-tertiary);">Koi problem? Hum yahan hain</div>
+        </div>
+      </div>
+      <button class="k-btn k-btn-ghost k-btn-sm" onclick="toggleSupport()">
+        <i class="ti ti-chevron-down" id="supportChevron"></i> Help topics
+      </button>
+    </div>
+
+    <!-- Contact buttons -->
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+      <a href="https://wa.me/919285273124" target="_blank"
+        style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;background:#25D366;color:white;border-radius:10px;text-decoration:none;font-size:13px;font-weight:500;">
+        <i class="ti ti-brand-whatsapp" style="font-size:16px;"></i> WhatsApp Support
+      </a>
+      <a href="tel:+919285273124"
+        style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;background:var(--k-bg);color:var(--k-ink);border:0.5px solid var(--k-border);border-radius:10px;text-decoration:none;font-size:13px;font-weight:500;">
+        <i class="ti ti-phone" style="font-size:16px;color:var(--k-saffron);"></i> Call Us
+      </a>
+    </div>
+
+    <!-- Help topics — hidden by default -->
+    <div id="supportTopics" style="display:none;margin-top:16px;padding-top:16px;border-top:0.5px solid var(--k-border);">
+      <div style="display:flex;flex-direction:column;gap:8px;">
+
+        <div class="support-item" onclick="toggleTopic(this)">
+          <div class="support-q"><i class="ti ti-plus support-icon"></i> Customer queue mein nahi dikh raha</div>
+          <div class="support-a">Customer ne QR scan kiya hoga — dashboard refresh karo (3 sec mein auto update hota hai). Agar phir bhi nahi dikh raha toh "Give Points Without Scan" se phone number search karo aur directly points do.</div>
+        </div>
+
+        <div class="support-item" onclick="toggleTopic(this)">
+          <div class="support-q"><i class="ti ti-plus support-icon"></i> WhatsApp message nahi gaya customer ko</div>
+          <div class="support-a">Give dabane ke baad WhatsApp automatically open hota hai. Agar nahi hua toh "WhatsApp" button dobara dabao — ya message copy karke manually bhejo. Customer ka number sahi hai yeh check karo.</div>
+        </div>
+
+        <div class="support-item" onclick="toggleTopic(this)">
+          <div class="support-q"><i class="ti ti-plus support-icon"></i> Galat points de diye — undo kaise karein</div>
+          <div class="support-a">Give karne ke turant baad "↩ Undo" button aata hai — 5 minute ke andar use karo. 5 minute baad undo nahi hoga. Agar late ho gaye toh WhatsApp pe contact karo.</div>
+        </div>
+
+        <div class="support-item" onclick="toggleTopic(this)">
+          <div class="support-q"><i class="ti ti-plus support-icon"></i> QR poster print karna hai</div>
+          <div class="support-a">Nav mein "QR Poster" button dabao — poster open hoga. Wahan se print karo ya PDF save karo. A5 ya A4 dono pe print ho sakta hai.</div>
+        </div>
+
+        <div class="support-item" onclick="toggleTopic(this)">
+          <div class="support-q"><i class="ti ti-plus support-icon"></i> Reward change karna hai</div>
+          <div class="support-a">Neeche "Reward Settings" mein jaao — "Edit" dabao. Points threshold aur reward name dono change kar sakte ho. Save karte hi customers ko naya reward dikhega.</div>
+        </div>
+
+        <div class="support-item" onclick="toggleTopic(this)">
+          <div class="support-q"><i class="ti ti-plus support-icon"></i> App slow hai ya kaam nahi kar raha</div>
+          <div class="support-a">Page refresh karo (pull down on mobile). Internet connection check karo. Agar phir bhi problem hai toh WhatsApp pe screenshot bhejo — hum jaldi fix karenge.</div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1355,6 +1461,23 @@ window.addEventListener("beforeinstallprompt",(e)=>{
     if(choice.outcome === "accepted") btn.style.display = "none";
   };
 });
+
+
+/* =========================
+   SUPPORT PANEL
+========================= */
+
+function toggleSupport(){
+  const topics = document.getElementById("supportTopics");
+  const chevron = document.getElementById("supportChevron");
+  const isHidden = topics.style.display === "none";
+  topics.style.display = isHidden ? "block" : "none";
+  chevron.style.transform = isHidden ? "rotate(180deg)" : "";
+}
+
+function toggleTopic(el){
+  el.classList.toggle("open");
+}
 
 /* =========================
    SERVICE WORKER
