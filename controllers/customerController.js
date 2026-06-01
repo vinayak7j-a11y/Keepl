@@ -18,7 +18,7 @@ const captureCustomer = async (req, res) => {
     const user = await User.findOneAndUpdate({ phone }, { $set: { name, phone }, $inc: { totalVisits: 1 }, $currentDate: { lastVisit: true } }, { new: true, upsert: true });
     await Wallet.findOneAndUpdate({ userId: user._id, shopId: shop._id }, { $setOnInsert: { points: 0, totalEarned: 0, totalRedeemed: 0 } }, { upsert: true });
     const wallet = await Wallet.findOne({ userId: user._id, shopId: shop._id }).lean();
-    const queueEntry = await CustomerQueue.findOneAndUpdate({ phone, shopId: shop._id, status: { $in: ["waiting", "processing"] } }, { $set: { name, phone, shopId: shop._id, status: "waiting", expiresAt: new Date(Date.now() + 1000 * 60 * 10) } }, { new: true, upsert: true });
+    const queueEntry = await CustomerQueue.findOneAndUpdate({ phone, shopId: shop._id, status: { $in: ["waiting", "processing"] } }, { $set: { name, phone, shopId: shop._id, status: "waiting", expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 8) } }, { new: true, upsert: true });
     console.log(`✅ Customer queued: ${name} (${phone}) at shop ${shopId}`);
     res.json({ success: true, message: "Added to queue", queueId: queueEntry._id, points: wallet?.points || 0, totalVisits: user.totalVisits || 1 });
   } catch (error) {
