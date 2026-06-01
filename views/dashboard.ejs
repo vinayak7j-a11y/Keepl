@@ -741,13 +741,6 @@ async function forceRefreshQueue(){
   await fetchQueue();
 }
 
-async function forceRefreshQueue(){
-  activeInputPhone = null;
-  isFetching = false;
-  lastTransactionTime = 0;
-  await fetchQueue();
-}
-
 async function fetchQueue(){
 
   if(isFetching) return;
