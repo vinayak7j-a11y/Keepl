@@ -70,10 +70,21 @@ exports.registerShop = async (req, res) => {
       qrCode
     });
 
-    res.json({
-      message: "Shop registered successfully",
-      shopId: shop.shopId
-    });
+    const token = jwt.sign(
+  {
+    shopId: shop.shopId,
+    id: shop._id
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: "7d" }
+);
+
+res.json({
+  message: "Shop registered successfully",
+  token,
+  shopId: shop.shopId,
+  qrCode: shop.qrCode
+});
 
   } catch (error) {
     console.error("Register error:", error);

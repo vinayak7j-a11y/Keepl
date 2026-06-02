@@ -125,12 +125,17 @@
         }
 
         localStorage.setItem('token', data.token);
-        localStorage.setItem('shopId', data.shopId);
+        localStorage.setItem("token", data.token);
+localStorage.setItem("shopId", data.shopId);
 
-successMsg.style.display = 'flex';
+if (data.qrCode) {
+  localStorage.setItem("qrCode", data.qrCode);
+}
+
+successMsg.style.display = "flex";
 
 setTimeout(() => {
-  window.location.href = '/dashboard/' + data.shopId;
+  window.location.href = "/dashboard/" + data.shopId;
 }, 1500);
       } catch (err) {
         errorText.textContent = 'Something went wrong. Try again.';
