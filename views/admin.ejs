@@ -246,7 +246,36 @@ function loadAllShopsTable(shops) {
       <td>₹${(s.totalRevenue || 0).toLocaleString("en-IN")}</td>
       <td>${trialBadge}</td>
       <td style="font-size:11px;color:var(--k-ink-tertiary);">${s.lastActive ? timeAgo(new Date(s.lastActive)) : "never"}</td>
-      <td><button class="${blockClass}" onclick="toggleBlock('${s.shopId}', ${s.isActive}, this)">${blockLabel}</button></td>
+      <td>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+
+    <a
+      href="/dashboard/${s.shopId}"
+      target="_blank"
+      class="block-btn"
+      style="text-decoration:none;background:#EAF3FF;color:#2456A6;"
+    >
+      Dashboard
+    </a>
+
+    <a
+      href="/poster/${s.shopId}"
+      target="_blank"
+      class="block-btn"
+      style="text-decoration:none;background:#F5F5F5;color:#333;"
+    >
+      QR Poster
+    </a>
+
+    <button
+      class="${blockClass}"
+      onclick="toggleBlock('${s.shopId}', ${s.isActive}, this)"
+    >
+      ${blockLabel}
+    </button>
+
+  </div>
+</td>
     </tr>`;
   }).join("");
 }
