@@ -22,7 +22,7 @@ const getDashboard = async (req, res) => {
       .select("-qrCode")
       .lean();
 if (!shop) {
-  return res.status(404).send("Shop not found");
+  return res.redirect("/register");
 }
 
 if (!shop.isActive) {
@@ -92,22 +92,22 @@ if (!shop.isActive) {
     });
 
     /* ===== BUILD CUSTOMER DATA ===== */
+const customers = queue.map(q => {
+  const user = userMap[q.phone];
+  const wallet = user
+    ? walletMap[user._id.toString()]
+    : null;
 
-    const customers = queue.map(q => {
-      const user = userMap[q.phone];
-      const wallet = user
-        ? walletMap[user._id.toString()]
-        : null;
-
-      return {
-        queueId: q._id,
-        name: q.name,
-        phone: q.phone,
-        visits: user?.totalVisits || 0,
-        totalSpent: user?.totalSpent || 0,
-        points: wallet?.points || 0
-      };
-    });
+  return {
+    queueId: q._id,
+    name: q.name,
+    phone: q.phone,
+    visits: wallet?.visitCount || 0,
+    totalSpent: wallet?.totalSpent || 0,
+    points: wallet?.points || 0
+  };
+});
+   
 
     /* ===== TODAY STATS ===== */
 
@@ -162,11 +162,10 @@ const getCustomersPage = async (req, res) => {
     const shop = await Shop.findOne({ shopId })
       .select("-qrCode")
       .lean();
-
+    
     if (!shop) {
-      return res.status(404).send("Shop not found");
-    }
-
+  return res.redirect("/register");
+}
     res.render("customers", { shop });
 
   } catch (error) {
@@ -255,10 +254,10 @@ const toggleShopBlock = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 module.exports = {
   getDashboard,
   getCustomersPage,
   getLiveStats,
-  getOnboardingStatus
+  getOnboardingStatus,
+  toggleShopBlock
 };

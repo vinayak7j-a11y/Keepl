@@ -76,12 +76,24 @@ body {
 </style>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("token");
   const shopId = localStorage.getItem("shopId");
 
-  if(token && shopId){
-    window.location.href="/dashboard/"+shopId;
+  if (!token || !shopId) return;
+
+  try {
+    const res = await fetch(`/dashboard/${shopId}`);
+
+    if (res.ok) {
+      window.location.href = `/dashboard/${shopId}`;
+    } else {
+      localStorage.removeItem("token");
+      localStorage.removeItem("shopId");
+    }
+  } catch (err) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("shopId");
   }
 });
 </script>
