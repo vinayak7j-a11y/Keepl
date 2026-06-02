@@ -1372,9 +1372,10 @@ function dismissChecklist(){
   localStorage.setItem('keepl_onboarding_dismissed', '1');
   document.getElementById('onboardingChecklist').style.display = 'none';
 }
-
-loadOnboardingChecklist();
-loadQR();
+window.addEventListener("load", () => {
+  loadOnboardingChecklist();
+  loadQR();
+});
 
 
 /* =========================
