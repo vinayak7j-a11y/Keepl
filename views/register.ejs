@@ -125,9 +125,13 @@
         }
 
         localStorage.setItem('token', data.token);
-        localStorage.setItem('shopId', data.shop?.shopId || '');
-        successMsg.style.display = 'flex';
-        setTimeout(() => window.location.href = '/dashboard/' + (data.shop?.shopId || ''), 1500);
+        localStorage.setItem('shopId', data.shopId);
+
+successMsg.style.display = 'flex';
+
+setTimeout(() => {
+  window.location.href = '/dashboard/' + data.shopId;
+}, 1500);
       } catch (err) {
         errorText.textContent = 'Something went wrong. Try again.';
         errorMsg.style.display = 'flex';
