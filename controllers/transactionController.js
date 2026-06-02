@@ -69,7 +69,12 @@ const addTransaction = async (req, res) => {
     const wallet = await Wallet.findOneAndUpdate(
       { userId: user._id, shopId: shop._id },
       {
-        $inc: { points: pointsEarned, totalEarned: pointsEarned },
+      $inc: {
+  points: pointsEarned,
+  totalEarned: pointsEarned,
+  totalSpent: amount,
+  visitCount: 1
+}, 
         $set: { lastTransaction: new Date() }
       },
       { new: true, upsert: true }
@@ -227,7 +232,12 @@ const undoTransaction = async (req, res) => {
     await Wallet.findOneAndUpdate(
       { userId: user._id, shopId: shop._id },
       {
-        $inc: { points: -points, totalEarned: -points },
+        $inc: {
+  points: -points,
+  totalEarned: -points,
+  totalSpent: -amount,
+  visitCount: -1
+},
         $set: { lastTransaction: new Date() }
       }
     );

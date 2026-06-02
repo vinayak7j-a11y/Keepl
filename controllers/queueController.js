@@ -66,8 +66,8 @@ exports.getQueue = async (req, res) => {
         queueId: q._id,
         name: q.name,
         phone: q.phone,
-        visits: user?.totalVisits || 0,
-        totalSpent: user?.totalSpent || 0,
+        visits: wallet?.visitCount || 0,
+        totalSpent: wallet?.totalSpent || 0,
         points: wallet?.points || 0,
         createdAt: q.createdAt
       };

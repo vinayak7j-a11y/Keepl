@@ -15,12 +15,25 @@ const captureCustomer = async (req, res) => {
     if (!req.body.consent) return res.status(400).json({ message: "Consent is required" });
     const shop = await Shop.findOne({ shopId });
     if (!shop) return res.status(404).json({ message: "Shop not found" });
-    const user = await User.findOneAndUpdate({ phone }, { $set: { name, phone }, $inc: { totalVisits: 1 }, $currentDate: { lastVisit: true } }, { new: true, upsert: true });
+    const user = await User.findOneAndUpdate(
+  { phone },
+  {
+    $set: { name, phone },
+    $currentDate: { lastVisit: true }
+  },
+  { new: true, upsert: true }
+);
     await Wallet.findOneAndUpdate({ userId: user._id, shopId: shop._id }, { $setOnInsert: { points: 0, totalEarned: 0, totalRedeemed: 0 } }, { upsert: true });
     const wallet = await Wallet.findOne({ userId: user._id, shopId: shop._id }).lean();
     const queueEntry = await CustomerQueue.findOneAndUpdate({ phone, shopId: shop._id, status: { $in: ["waiting", "processing"] } }, { $set: { name, phone, shopId: shop._id, status: "waiting", expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 8) } }, { new: true, upsert: true });
     console.log(`✅ Customer queued: ${name} (${phone}) at shop ${shopId}`);
-    res.json({ success: true, message: "Added to queue", queueId: queueEntry._id, points: wallet?.points || 0, totalVisits: user.totalVisits || 1 });
+    res.json({
+  success: true,
+  message: "Added to queue",
+  queueId: queueEntry._id,
+  points: wallet?.points || 0,
+  totalVisits: wallet?.visitCount || 0
+});
   } catch (error) {
     console.error("❌ Customer capture error:", error);
     res.status(500).json({ message: "Something went wrong. Please try again." });
@@ -36,7 +49,15 @@ const getCustomer = async (req, res) => {
     const user = await User.findOne({ phone }).lean();
     if (!user) return res.status(404).json({ message: "Customer not found" });
     const wallet = await Wallet.findOne({ userId: user._id, shopId: shop._id }).lean();
-    res.json({ name: user.name || "Customer", phone: user.phone, points: wallet?.points || 0, totalEarned: wallet?.totalEarned || 0, visits: user.totalVisits || 0, totalSpent: user.totalSpent || 0, lastVisit: user.lastVisit || null });
+    res.json({
+  name: user.name || "Customer",
+  phone: user.phone,
+  points: wallet?.points || 0,
+  totalEarned: wallet?.totalEarned || 0,
+  visits: wallet?.visitCount || 0,
+  totalSpent: wallet?.totalSpent || 0,
+  lastVisit: user.lastVisit || null
+});
   } catch (error) {
     console.error("❌ Get customer error:", error);
     res.status(500).json({ message: "Server error" });
@@ -75,7 +96,18 @@ const getShopCustomers = async (req, res) => {
     const customers = wallets.map(w => {
       const user = userMap[w.userId.toString()];
       const redeemHistory = redeemMap[w.userId.toString()] || [];
-      return { name: user?.name || "Unknown", phone: user?.phone || "", points: w.points || 0, totalEarned: w.totalEarned || 0, totalRedeemed: w.totalRedeemed || 0, visits: user?.totalVisits || 0, totalSpent: user?.totalSpent || 0, lastVisit: user?.lastVisit || null, redeemCount: redeemHistory.length, redeemHistory };
+      return {
+  name: user?.name || "Unknown",
+  phone: user?.phone || "",
+  points: w.points || 0,
+  totalEarned: w.totalEarned || 0,
+  totalRedeemed: w.totalRedeemed || 0,
+  visits: w.visitCount || 0,
+  totalSpent: w.totalSpent || 0,
+  lastVisit: user?.lastVisit || null,
+  redeemCount: redeemHistory.length,
+  redeemHistory
+};
     });
     customers.sort((a, b) => b.points - a.points);
     res.json(customers);
@@ -97,7 +129,16 @@ const searchCustomers = async (req, res) => {
     const wallets = await Wallet.find({ shopId: shop._id, userId: { $in: users.map(u => u._id) } }).lean();
     const walletMap = {};
     wallets.forEach(w => { walletMap[w.userId.toString()] = w; });
-    const results = users.map(u => ({ name: u.name || "Unknown", phone: u.phone, points: walletMap[u._id.toString()]?.points || 0, totalSpent: u.totalSpent || 0, visits: u.totalVisits || 0 })).slice(0, 5);
+    const results = users
+  .filter(u => walletMap[u._id.toString()])
+  .map(u => ({
+    name: u.name || "Unknown",
+    phone: u.phone,
+    points: walletMap[u._id.toString()]?.points || 0,
+    totalSpent: walletMap[u._id.toString()]?.totalSpent || 0,
+    visits: walletMap[u._id.toString()]?.visitCount || 0
+  }))
+  .slice(0, 5);
     res.json(results);
   } catch (err) {
     console.error("Search error:", err);

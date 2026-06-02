@@ -33,10 +33,20 @@ const walletSchema = new mongoose.Schema(
   },
 
   lastTransaction: {
-    type: Date
-  }
-
+  type: Date
 },
+
+visitCount: {
+  type: Number,
+  default: 0
+},
+
+totalSpent: {
+  type: Number,
+  default: 0
+}
+
+}, 
 {
   timestamps: true
 });
@@ -68,6 +78,6 @@ walletSchema.methods.redeemPoints = function(points) {
   this.points -= points;
   this.totalRedeemed += points;
   this.lastTransaction = new Date();
-};
+}; 
 
 module.exports = mongoose.model("Wallet", walletSchema);
