@@ -1,4 +1,4 @@
-const CACHE_NAME = "keepl-v3";
+const CACHE_NAME = "keepl-v4";
 
 const STATIC_ASSETS = [
   "/keepl.css",
