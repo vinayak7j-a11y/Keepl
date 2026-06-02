@@ -3,3 +3,4 @@ node_modules/
 .DS_Storebackups/
 backups/
 node_modules/
+.DS_Store
