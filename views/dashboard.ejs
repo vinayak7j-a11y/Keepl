@@ -172,27 +172,23 @@ input[type="number"]:focus {
 }
 
 @media (max-width: 600px) {
-  /* Nav */
   #navLinks { display: none !important; }
   .k-nav { padding: 0 12px; height: 52px; }
-  .k-nav-actions { gap: 6px; }
-  .k-btn-sm { padding: 6px 10px; font-size: 12px; }
-
-  /* Page */
+  .k-nav-actions { gap: 4px; }
+  .k-btn-sm { padding: 7px 10px; font-size: 12px; min-height: 36px; }
   body { padding: 0; }
-  .k-page { padding: 12px 12px 40px; }
-
-  /* Stat cards */
-  .k-stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-  .k-stat-num { font-size: 26px; }
-
-  /* Cards */
-  .k-card { padding: 16px 12px; margin-bottom: 14px; }
-
-  /* Search */
-  #customerSearchInput { font-size: 16px; }
-
-  /* Queue table — stack on mobile */
+  .k-page { padding: 10px 10px 60px; }
+  h2 { font-size: 18px !important; }
+  .k-stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .k-stat-num { font-size: 24px; }
+  .k-stat-label { font-size: 11px; }
+  .k-stat-card { padding: 12px 10px; border-radius: 14px; }
+  .k-card { padding: 14px 12px; margin-bottom: 12px; border-radius: 16px; }
+  .k-card-title { font-size: 14px; margin-bottom: 12px; }
+  #customerSearchInput { font-size: 16px; width: 100%; }
+  #customerSearchResult > div { flex-wrap: wrap; gap: 8px; }
+  #customerSearchResult input[type="number"] { width: 100% !important; }
+  #customerSearchResult .k-btn { width: 100%; justify-content: center; }
   table { display: block; }
   thead { display: none; }
   tbody { display: block; }
@@ -202,9 +198,9 @@ input[type="number"]:focus {
     background: var(--k-surface);
     border: 0.5px solid var(--k-border);
     border-radius: var(--k-r-md);
-    padding: 12px;
+    padding: 14px 12px;
     margin-bottom: 10px;
-    gap: 8px;
+    gap: 10px;
   }
   td {
     display: flex;
@@ -212,18 +208,22 @@ input[type="number"]:focus {
     padding: 0;
     border: none;
     font-size: 13px;
+    flex-wrap: wrap;
+    gap: 6px;
   }
-
-  /* Bill input full width on mobile */
-  input[type="number"] { width: 100%; font-size: 16px; }
-
-  /* Give and Redeem buttons full width */
+  input[type="number"] { width: 100%; font-size: 16px; min-height: 40px; }
   .k-queue-actions { width: 100%; }
-  .k-queue-actions .k-btn { flex: 1; justify-content: center; }
-
-  /* Settings */
-  .settings-row { flex-direction: column; align-items: flex-start; }
+  .k-queue-actions .k-btn { flex: 1; justify-content: center; min-height: 40px; }
+  .k-btn-primary, .k-btn-teal { min-height: 40px; font-size: 14px; }
+  .settings-row { flex-direction: column; align-items: flex-start; gap: 8px; }
   .settings-row input[type="number"] { width: 100%; }
+  .settings-row .k-btn { width: 100%; justify-content: center; }
+  .support-q { font-size: 13px; padding: 12px; }
+  .support-a { font-size: 12px; padding: 10px 12px; }
+  .qrSection img { width: 160px !important; }
+  #checklistSteps > div { flex-wrap: wrap; }
+  #rewardNameInput { width: 100% !important; }
+  input[type="text"], input[type="tel"], input[type="password"], textarea, select { font-size: 16px !important; }
 }
 </style>
 
