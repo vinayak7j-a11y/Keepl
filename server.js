@@ -28,8 +28,7 @@ const queueRoutes = require("./routes/queueRoutes");
 const posterRoutes = require("./routes/posterRoutes");
 const shopPageRoutes = require("./routes/shopPageRoutes");
 const analyticsRoutes = require("./routes/analyticsRoutes");
-const adminRoutes = require("./routes/adminRoutes");
-
+const adminRoutes = require("./routes/adminRoutes"); 
 /* =========================
    APP SETTINGS
 ========================= */
@@ -98,7 +97,7 @@ app.get("/debug-routes", (req, res) => {
 });
 app.use("/api/redeem", redeemRoutes);
 app.use("/api/queue", queueRoutes);
-app.use("/api/analytics", analyticsRoutes);
+app.use("/api/analytics", analyticsRoutes); 
 
 /* =========================
    PAGE ROUTES (UI)
