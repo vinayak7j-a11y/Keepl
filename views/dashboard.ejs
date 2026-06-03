@@ -573,24 +573,35 @@ const dismissedPhones = new Set();
    QUEUE PING SOUND
 ========================= */
 
+let audioCtx = null;
+
+function initAudio(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
+  }
+  if(audioCtx && audioCtx.state === "suspended"){
+    audioCtx.resume();
+  }
+}
+
+document.addEventListener("touchstart", initAudio, { once: true });
+document.addEventListener("click", initAudio, { once: true });
+
 function playQueuePing(){
   try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
+    if(!audioCtx) return;
+    if(audioCtx.state === "suspended") audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
     osc.connect(gain);
-    gain.connect(ctx.destination);
-
+    gain.connect(audioCtx.destination);
     osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.2);
-
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.4);
   }catch(e){
     console.error("Audio not available:", e);
   }
@@ -843,7 +854,7 @@ async function fetchQueue(){
 
   if(isFetching) return;
   if(activeInputPhone) return;
-  if(Date.now() - lastTransactionTime < 30000) return;
+  if(Date.now() - lastTransactionTime < 8000) return;
 
   isFetching = true;
 
@@ -1076,13 +1087,13 @@ async function givePoints(phone, queueId, customerName, btn){
       sendWhatsApp(phone, customerName, earned, total, spent);
 
       recentlyProcessed.add(phone);
-      lastTransactionTime = Date.now();
+      lastTransactionTime = Date.now() - 7000;
 
       amountInput.value = "";
       delete inputCache[phone];
       activeInputPhone = null;
 
-      setTimeout(fetchQueue, 1000);
+      setTimeout(forceRefreshQueue, 500);
 
     }else{
       msg.innerHTML = `<span class='error'>${data.message || "Error"}</span>`;
@@ -1141,9 +1152,9 @@ async function redeemPoints(phone, queueId, customerName, currentPoints, btn){
       sendWhatsAppRedeem(phone, customerName, REWARD_THRESHOLD, data.remainingPoints);
 
       recentlyProcessed.add(phone);
-      lastTransactionTime = Date.now();
+      lastTransactionTime = Date.now() - 7000;
 
-      setTimeout(fetchQueue, 1000);
+      setTimeout(forceRefreshQueue, 500);
 
     }else{
       msg.innerHTML = `<span class="error">${data.message || "Error"}</span>`;
@@ -1429,6 +1440,13 @@ setInterval(()=>{
     fetchQueue();
   }
 }, 3000);
+
+// Mobile fix — clear activeInputPhone on touch outside inputs
+document.addEventListener("touchstart", (e) => {
+  if(e.target.tagName !== "INPUT"){
+    activeInputPhone = null;
+  }
+});
 
 /* =========================
    PWA INSTALL
