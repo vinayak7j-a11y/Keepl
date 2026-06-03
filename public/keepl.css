@@ -620,6 +620,20 @@
   max-width: 300px;
 }
 
+@media (max-width: 600px) {
+  #toastContainer {
+    top: auto;
+    bottom: 80px;
+    right: 10px;
+    left: 10px;
+    max-width: 100%;
+  }
+  .toast {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+}
+
 .toast {
   background: var(--k-ink);
   color: white;
