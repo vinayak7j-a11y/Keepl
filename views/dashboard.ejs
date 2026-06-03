@@ -1170,7 +1170,7 @@ async function loadQR(){
   if(cached){
     img.src = cached;
     img.style.display = 'block';
-    return;
+    // still fetch fresh in background
   }
 
   try{
@@ -1420,7 +1420,7 @@ async function undoPoints(phone, btn){
   }
 }
 
-setInterval(fetchLiveStats, 30000);
+setInterval(() => { if(!document.hidden) fetchLiveStats(); }, 30000);
 
 setInterval(()=>{
   if(!document.hidden && !activeInputPhone){
