@@ -80,7 +80,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const token = localStorage.getItem("token");
   const shopId = localStorage.getItem("shopId");
 
-  if (!token || !shopId) return;
+  if (!token || !shopId) { localStorage.clear(); return; }
 
   try {
     const res = await fetch(`/dashboard/${shopId}`);
