@@ -273,7 +273,15 @@ function loadAllShopsTable(shops) {
       onclick="toggleBlock('${s.shopId}', ${s.isActive}, this)"
     >
       ${blockLabel}
-    </button>
+    </button> 
+
+    <button
+  class="block-btn"
+  style="background:#FCEBEB;color:#C62828;border:1px solid #F3B5B5;"
+  onclick="deleteShop('${s.shopId}')"
+>
+  🗑 Delete
+</button>
 
   </div>
 </td>
@@ -342,7 +350,8 @@ async function toggleBlock(shopId, isActive, btn) {
     const res = await fetch(`${BASE_URL}/admin/api/shops/${shopId}/toggle-block`, {
       method: "PATCH",
       headers: { "Authorization": `Bearer ${adminToken}` }
-    });
+    }); 
+    
     const data = await res.json();
     if (res.ok) {
       btn.className = data.isActive ? "block-btn block-btn-active" : "block-btn block-btn-blocked";
@@ -357,6 +366,41 @@ async function toggleBlock(shopId, isActive, btn) {
     alert("Server error");
     btn.disabled = false;
     btn.innerText = isActive ? "🔒 Block" : "✅ Unblock";
+  }
+} 
+async function deleteShop(shopId) {
+
+  const confirmed = confirm(
+    "⚠️ Delete this shop?\n\nThis will permanently delete:\n\n• Shop\n• Wallets\n• Transactions\n• Queue\n• Notifications\n\nThis action cannot be undone."
+  );
+
+  if (!confirmed) return;
+
+  try {
+
+    const token = localStorage.getItem("adminToken");
+
+    const res = await fetch(`${BASE_URL}/admin/api/shops/${shopId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.message || "Failed to delete shop.");
+      return;
+    }
+
+    alert("✅ Shop deleted successfully.");
+
+    refreshAll(); 
+
+  } catch (err) {
+    console.error(err);
+    alert("Something went wrong.");
   }
 }
 

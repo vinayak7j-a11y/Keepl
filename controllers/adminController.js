@@ -2,7 +2,8 @@ const Shop = require("../models/Shop");
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
-const CustomerQueue = require("../models/CustomerQueue");
+const CustomerQueue = require("../models/CustomerQueue"); 
+const Notification = require("../models/Notification");
 
 function startOfDay() {
   const d = new Date();
@@ -339,6 +340,26 @@ const toggleShopBlock = async (req, res) => {
     console.error("Toggle block error:", err);
     res.status(500).json({ message: "Server error" });
   }
-};
+}; 
+module.exports.toggleShopBlock = toggleShopBlock; 
+const deleteShopForever = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const shop = await Shop.findOne({ shopId });
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+await Promise.all([
+  CustomerQueue.deleteMany({ shopId: shop._id }),
+  Transaction.deleteMany({ shopId: shop._id }),
+  Wallet.deleteMany({ shopId: shop._id }),
+  Notification.deleteMany({ shopId: shop._id }),
+  Shop.deleteOne({ shopId })
+]);
+    
+    res.json({ success: true, message: "Shop and related data deleted successfully" });
 
-module.exports.toggleShopBlock = toggleShopBlock;
+  } catch (err) {
+    console.error("Delete shop error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+module.exports.deleteShopForever = deleteShopForever;
